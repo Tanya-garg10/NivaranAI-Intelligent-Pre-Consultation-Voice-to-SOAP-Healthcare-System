@@ -154,5 +154,23 @@ export function registerDoctorEmail(email: string) {
 }
 
 export function isDoctorEmailRegistered(email: string): boolean {
-  return loadDoctorEmails().includes(email.trim().toLowerCase());
+  const e = email.trim().toLowerCase();
+  const registered = loadDoctorEmails().includes(e);
+  if (registered) return true;
+
+  // Fallback: Check facilities for any approved doctor with this email
+  try {
+    const facilitiesRaw = window.localStorage.getItem("nivaranai.facilities.v1");
+    if (facilitiesRaw) {
+      const facilities = JSON.parse(facilitiesRaw);
+      for (const f of facilities) {
+        if (f.doctors?.some((d: any) => d.email?.toLowerCase() === e && d.status === "approved")) {
+          return true;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return false;
 }

@@ -30,6 +30,7 @@ function HospitalSignup() {
   const [email, setEmail] = useState("");
   const [contact, setContact] = useState("");
   const [licenseFile, setLicenseFile] = useState("");
+  const [licenseFileData, setLicenseFileData] = useState("");
   const [departments, setDepartments] = useState<string[]>(["General Medicine"]);
   const [newDept, setNewDept] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +78,7 @@ function HospitalSignup() {
         contact: contact.trim(),
         email: email.trim(),
         licenseFile: licenseFile || undefined,
+        licenseFileData: licenseFileData || undefined,
         departments: (isClinic ? departments.slice(0, 1) : departments).map((n) => ({
           id: crypto.randomUUID(),
           name: n,
@@ -247,7 +249,21 @@ function HospitalSignup() {
                 type="file"
                 className="sr-only"
                 accept=".pdf,image/*"
-                onChange={(e) => setLicenseFile(e.target.files?.[0]?.name ?? "")}
+                onChange={(e) => {
+                   const file = e.target.files?.[0];
+                   if(!file) return;
+                   const allowedSize = 2.5 * 1024 * 1024; // 2.5 MB max for local storage mock
+                   if(file.size > allowedSize) {
+                      toast.error("File size must be under 2.5MB");
+                      return;
+                   }
+                   setLicenseFile(file.name);
+                   const reader = new FileReader();
+                   reader.onload = (ev) => {
+                       setLicenseFileData((ev.target?.result as string) ?? "");
+                   };
+                   reader.readAsDataURL(file);
+                }}
               />
             </label>
           </div>

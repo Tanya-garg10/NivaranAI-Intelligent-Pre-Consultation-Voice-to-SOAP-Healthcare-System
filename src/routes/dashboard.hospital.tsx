@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Building2, Stethoscope, Plus, Trash2, LogOut, Mail, ShieldCheck, AlertTriangle, Map } from "lucide-react";
+import { Building2, Stethoscope, Plus, Trash2, LogOut, Mail, ShieldCheck, AlertTriangle, Map, Edit2, Ban, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { useI18n } from "@/lib/i18n";
 import { useFacilities } from "@/hooks/useFacilities";
 import { usePatients } from "@/hooks/usePatients";
-import { addDepartment, addDoctor, deleteDoctor, type Facility } from "@/lib/hospitals";
+import { addDepartment, addDoctor, deleteDoctor, updateDoctor, type Facility } from "@/lib/hospitals";
 import { clearHospitalSession, getHospitalSession, registerDoctorEmail } from "@/lib/hospitalAuth";
 import { decryptVault } from "@/lib/triage";
 
@@ -270,8 +270,14 @@ function DoctorsPanel({ facility }: { facility: Facility }) {
     specialty: "",
     departmentId: "",
     room: "",
+    room: "",
     email: "",
   });
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", specialty: "", room: "", departmentId: "" });
+  const [blacklistDocId, setBlacklistDocId] = useState<string | null>(null);
+  const [blacklistForm, setBlacklistForm] = useState({ reason: "", type: "temporary" as "none" | "temporary" | "permanent" });
+
   const isClinic = facility.type === "Clinic";
   const locked = isClinic && facility.doctors.length >= 1;
 
@@ -307,28 +313,118 @@ function DoctorsPanel({ facility }: { facility: Facility }) {
       <div className="mt-4 space-y-1.5">
         {facility.doctors.map((d) => {
           const dept = facility.departments.find((x) => x.id === d.departmentId);
+          const isEditing = editingDocId === d.id;
+          const isBlacklisting = blacklistDocId === d.id;
+
           return (
             <div
               key={d.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              className={`flex flex-col gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${d.blacklistStatus && d.blacklistStatus !== 'none' ? 'bg-destructive/5 border-destructive/20' : 'border-border bg-background'}`}
             >
-              <div>
-                <div className="font-medium">{d.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {d.specialty} · {dept?.name ?? "—"} {d.room ? `· ${d.room}` : ""}
+              {!isEditing && !isBlacklisting ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                     <div className="flex items-center gap-1.5">
+                        <span className={`font-medium ${d.blacklistStatus && d.blacklistStatus !== 'none' ? 'text-destructive line-through' : ''}`}>{d.name}</span>
+                        {d.blacklistStatus && d.blacklistStatus !== "none" && (
+                           <span className="text-[9px] uppercase font-bold tracking-wider text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-sm">{d.blacklistStatus} BLOCKED</span>
+                        )}
+                     </div>
+                    <div className="text-xs text-muted-foreground">
+                      {d.specialty} · {dept?.name ?? "—"} {d.room ? `· ${d.room}` : ""}
+                    </div>
+                    {d.email && <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 opacity-70"><Mail className="h-2.5 w-2.5" /> {d.email}</div>}
+                    {d.blacklistReason && <div className="text-xs text-destructive mt-0.5 opacity-80">Reason: {d.blacklistReason}</div>}
+                    {d.status === "pending" && (
+                      <div className="mt-3 border-t border-border pt-2 pb-1">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Verification Documents</p>
+                        <div className="flex gap-2">
+                          {d.degreeFile && (
+                             <a href={d.degreeFile} download={`Degree_${d.name.replace(/\\s+/g, "_")}.pdf`} className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold text-muted-foreground bg-secondary px-2.5 py-1.5 rounded-md hover:bg-border transition-colors"><Download className="h-3 w-3" /> Degree</a>
+                          )}
+                          {d.licenseFile && (
+                             <a href={d.licenseFile} download={`License_${d.name.replace(/\\s+/g, "_")}.pdf`} className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold text-muted-foreground bg-secondary px-2.5 py-1.5 rounded-md hover:bg-border transition-colors"><Download className="h-3 w-3" /> License</a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {d.status === "pending" ? (
+                       <button
+                         onClick={() => {
+                            updateDoctor(facility.id, d.id, { status: "approved" });
+                            if (d.email) registerDoctorEmail(d.email);
+                            toast.success("Doctor approved");
+                         }}
+                         className="rounded-md px-2 py-1 bg-primary/10 font-bold text-[10px] uppercase tracking-wider text-primary hover:bg-primary/20"
+                       >
+                         Approve
+                       </button>
+                    ) : ( 
+                       <button
+                         onClick={() => { setEditingDocId(d.id); setBlacklistDocId(null); setEditForm({ name: d.name, specialty: d.specialty, room: d.room || "", departmentId: d.departmentId }) }}
+                         className="rounded-md p-1 font-medium hover:bg-secondary text-muted-foreground"
+                       >
+                         <Edit2 className="h-3.5 w-3.5" />
+                       </button>
+                    )}
+                    {d.blacklistBy === "admin" ? (
+                       <span className="text-[10px] uppercase font-bold text-destructive bg-destructive/10 px-2 py-1 rounded">Admin Lock</span>
+                    ) : (
+                       <>
+                       {d.status !== "pending" && (
+                          <button
+                            onClick={() => { setBlacklistDocId(d.id); setEditingDocId(null); setBlacklistForm({ reason: d.blacklistReason || "", type: d.blacklistStatus && d.blacklistStatus !== 'none' ? d.blacklistStatus : "temporary" }) }}
+                            className="rounded-md p-1 font-medium hover:bg-secondary text-muted-foreground"
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                          </button>
+                       )}
+                       <button
+                         onClick={() => {
+                           if (confirm(`Remove ${d.name}?`)) {
+                             deleteDoctor(facility.id, d.id);
+                             toast.message("Doctor removed");
+                           }
+                         }}
+                         className="rounded-md p-1 text-destructive hover:bg-destructive/10"
+                       >
+                         <Trash2 className="h-3.5 w-3.5" />
+                       </button>
+                       </>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => {
-                  if (confirm(`Remove ${d.name}?`)) {
-                    deleteDoctor(facility.id, d.id);
-                    toast.message("Doctor removed");
-                  }
-                }}
-                className="rounded-md p-1 text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              ) : isEditing ? (
+                 <div className="flex flex-col gap-1.5 pt-1">
+                    <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="rounded text-xs border border-border px-2 py-1.5" />
+                    <div className="flex gap-1.5">
+                       <input value={editForm.specialty} onChange={e => setEditForm({...editForm, specialty: e.target.value})} className="rounded text-xs border border-border px-2 py-1.5 flex-1" />
+                       <input value={editForm.room} onChange={e => setEditForm({...editForm, room: e.target.value})} className="rounded text-xs border border-border px-2 py-1.5 w-24" />
+                    </div>
+                    <div className="flex justify-end gap-1.5 mt-1">
+                       <button onClick={() => setEditingDocId(null)} className="px-3 py-1.5 text-[10px] uppercase font-bold text-muted-foreground hover:bg-secondary rounded-lg">Cancel</button>
+                       <button onClick={() => { updateDoctor(facility.id, d.id, editForm); setEditingDocId(null); toast.success("Doctor updated") }} className="px-3 py-1.5 text-[10px] uppercase font-bold bg-foreground text-background rounded-lg">Save</button>
+                    </div>
+                 </div>
+              ) : (
+                 <div className="flex flex-col gap-1.5 pt-1">
+                    <p className="text-xs font-semibold text-destructive">Block / Blacklist Doctor</p>
+                    <select value={blacklistForm.type} onChange={e => setBlacklistForm({...blacklistForm, type: e.target.value as any})} className="rounded-lg text-xs border border-destructive/20 bg-destructive/5 px-2 py-2 outline-none">
+                       <option value="none">Active (Remove Block)</option>
+                       <option value="temporary">Temporary Block</option>
+                       <option value="permanent">Permanent Blacklist</option>
+                    </select>
+                    {blacklistForm.type !== "none" && (
+                      <input placeholder="Reason for blocking..." value={blacklistForm.reason} onChange={e => setBlacklistForm({...blacklistForm, reason: e.target.value})} className="rounded-lg text-xs border border-destructive/20 bg-destructive/5 px-2 py-2 outline-none" />
+                    )}
+                    <div className="flex justify-end gap-1.5 mt-1">
+                       <button onClick={() => setBlacklistDocId(null)} className="px-3 py-1.5 text-[10px] uppercase font-bold text-muted-foreground hover:bg-secondary rounded-lg">Cancel</button>
+                       <button onClick={() => { updateDoctor(facility.id, d.id, { blacklistStatus: blacklistForm.type, blacklistBy: blacklistForm.type === 'none' ? undefined : 'hospital', blacklistReason: blacklistForm.type === 'none' ? undefined : blacklistForm.reason }); setBlacklistDocId(null); toast.success("Status changed") }} className="px-3 py-1.5 text-[10px] uppercase font-bold bg-destructive text-destructive-foreground rounded-lg">{blacklistForm.type === 'none' ? 'Unblock' : 'Apply Block'}</button>
+                    </div>
+                 </div>
+              )}
             </div>
           );
         })}

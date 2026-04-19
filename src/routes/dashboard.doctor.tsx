@@ -44,6 +44,7 @@ import { usePatients } from "@/hooks/usePatients";
 import { useFacilities } from "@/hooks/useFacilities";
 import { isVoiceSupported, startVoice, type VoiceSession } from "@/lib/voice";
 import { useEffect, useRef } from "react";
+import { updateDoctor } from "@/lib/hospitals";
 
 export const Route = createFileRoute("/dashboard/doctor")({
   head: () => ({
@@ -59,6 +60,7 @@ function DoctorDashboard() {
   const { t } = useI18n();
   const allPatients = usePatients();
   const facilities = useFacilities();
+  const [showProfile, setShowProfile] = useState(false);
 
   // Find doctor record matching the signed-in user (by name match across facilities).
   const myDoctor = useMemo(() => {
@@ -113,15 +115,63 @@ function DoctorDashboard() {
     ? `${t("dd.yourQueue")} ${myDoctor.facility.name} · ${myDoctor.doctor.specialty}`
     : t("dd.liveQueue");
 
+  if (myDoctor && myDoctor.doctor.status === "pending") {
+    return (
+      <DashboardShell requiredRole="doctor" title="Awaiting Approval" subtitle={`Welcome to NivaranAI`}>
+        <div className="mx-auto max-w-2xl py-12">
+          <div className="rounded-3xl border border-warning/30 bg-warning/5 p-8 text-center shadow-soft">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-warning/20 text-warning">
+               <ShieldAlert className="h-8 w-8 text-warning" />
+            </div>
+            <h1 className="font-display mt-5 text-2xl font-semibold text-foreground">Application Pending</h1>
+            <p className="mt-2 text-sm text-foreground/70">
+               Your request to join <span className="font-semibold text-foreground">{myDoctor.facility.name}</span> in the <span className="font-semibold text-foreground">{facilities.find(f => f.id === myDoctor.facility.id)?.departments.find(d => d.id === myDoctor.doctor.departmentId)?.name}</span> department is under review.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">You will be granted access to the queue once the hospital administrator approves your account.</p>
+          </div>
+        </div>
+      </DashboardShell>
+    )
+  }
+
+  if (showProfile && myDoctor) {
+    return (
+      <DashboardShell requiredRole="doctor" title="Doctor Profile" subtitle="Manage your clinician presence">
+         <DoctorProfilePanel 
+            myDoctor={myDoctor} 
+            onClose={() => setShowProfile(false)} 
+         />
+      </DashboardShell>
+    )
+  }
+
   return (
     <DashboardShell
       requiredRole="doctor"
       title={`${t("dd.goodDay")} ${user?.name.split(" ")[0] ?? ""}`}
       subtitle={subtitle}
       nav={
-        <span className="hidden rounded-full bg-success/15 px-3 py-1.5 text-xs font-medium text-success sm:inline-flex">
-          {t("dd.verified")}
-        </span>
+        <div className="flex items-center gap-3">
+          {myDoctor && (
+             <button onClick={() => setShowProfile(true)} className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-secondary">
+               {myDoctor.doctor.profilePhoto ? (
+                  <img src={myDoctor.doctor.profilePhoto} alt="Profile" className="h-5 w-5 rounded-full object-cover" />
+               ) : (
+                  <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-primary">{user?.name[0].toUpperCase()}</div>
+               )}
+               Profile
+             </button>
+          )}
+          {myDoctor?.doctor.dutyTiming && (
+             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-primary">
+               <Clock className="h-3 w-3" /> Duty: {myDoctor.doctor.dutyTiming}
+             </span>
+          )}
+          <span className="hidden rounded-full bg-success/15 px-3 py-1.5 text-xs font-medium text-success sm:inline-flex items-center gap-1">
+            <div className={`h-1.5 w-1.5 rounded-full ${myDoctor?.doctor.available !== false ? 'bg-success' : 'bg-warning'}`}></div>
+            {myDoctor?.doctor.available !== false ? 'Active' : 'Away'}
+          </span>
+        </div>
       }
     >
       <div className="grid gap-5 lg:grid-cols-12">
@@ -639,6 +689,72 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
   );
 }
 
+function DoctorProfilePanel({ myDoctor, onClose }: { myDoctor: { facility: any, doctor: any }, onClose: () => void }) {
+   const [dutyTiming, setDutyTiming] = useState(myDoctor.doctor.dutyTiming || "");
+   const [available, setAvailable] = useState(myDoctor.doctor.available !== false);
+   const [profilePhoto, setProfilePhoto] = useState(myDoctor.doctor.profilePhoto || "");
+
+   const handleSave = () => {
+      updateDoctor(myDoctor.facility.id, myDoctor.doctor.id, {
+         dutyTiming,
+         available,
+         profilePhoto: profilePhoto || undefined,
+      });
+      toast.success("Profile Updated", { description: "Your duty timings and availability have been saved." });
+      onClose();
+   };
+
+   return (
+      <div className="mx-auto max-w-2xl py-8">
+         <div className="rounded-3xl border border-border bg-card p-6 shadow-soft sm:p-8">
+            <h2 className="font-display text-2xl font-semibold">Doctor Profile</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Manage your clinician identity and queue availability.</p>
+
+            <div className="mt-8 space-y-6">
+               <div className="flex items-center gap-6 border-b border-border pb-6">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary">
+                     {profilePhoto ? <img src={profilePhoto} alt="Profile" className="h-full w-full object-cover" /> : <div className="text-xl font-bold text-muted-foreground">{myDoctor.doctor.name[0]}</div>}
+                  </div>
+                  <div className="flex-1">
+                     <label className="text-xs font-semibold text-muted-foreground mb-2 block">Upload Display Photo</label>
+                     <input type="file" accept="image/*" className="text-sm text-muted-foreground" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                           const reader = new FileReader();
+                           reader.onload = ev => setProfilePhoto(ev.target?.result as string);
+                           reader.readAsDataURL(file);
+                        }
+                     }} />
+                     <p className="text-[10px] text-muted-foreground mt-2">Max 2MB. Square ratio recommended.</p>
+                  </div>
+               </div>
+
+               <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-2 block">Duty Timings</label>
+                  <input value={dutyTiming} onChange={e => setDutyTiming(e.target.value)} placeholder="e.g. 09:00 AM - 05:00 PM (Mon-Fri)" className="w-full rounded-xl border border-input bg-background py-2.5 px-3 text-sm outline-none focus:border-primary" />
+               </div>
+
+               <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 p-4">
+                  <div>
+                     <p className="text-sm font-semibold text-foreground">Available for Consultation</p>
+                     <p className="text-xs text-muted-foreground">Enable this when you are ready to accept patients from the queue.</p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                     <input type="checkbox" checked={available} onChange={e => setAvailable(e.target.checked)} className="peer sr-only" />
+                     <div className="peer h-6 w-11 rounded-full bg-border after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-[''] peer-checked:bg-success peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+                  </label>
+               </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+               <button onClick={onClose} className="rounded-full px-5 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary">Cancel</button>
+               <button onClick={handleSave} className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:bg-mineral">Save Changes</button>
+            </div>
+         </div>
+      </div>
+   );
+}
+
 function RiskPredictionPanel({ patient }: { patient: PatientRecord }) {
   const { t } = useI18n();
   const risks = useMemo(() => predictRisks(patient), [patient.id]);
@@ -692,6 +808,7 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
   const [notes, setNotes] = useState("");
 
   // Voice Recording functionality
+  // ... (keeping original ConsultationTools signature)
   const [recordingTarget, setRecordingTarget] = useState<"notes" | "drug" | null>(null);
   const [starting, setStarting] = useState(false);
   const sessionRef = useRef<VoiceSession | null>(null);

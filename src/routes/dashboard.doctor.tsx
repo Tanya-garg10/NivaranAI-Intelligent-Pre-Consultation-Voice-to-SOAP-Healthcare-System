@@ -30,6 +30,7 @@ import {
 import { DashboardShell } from "@/components/DashboardShell";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { predictRisks, type RiskPrediction } from "@/lib/riskPredict";
 import {
   priorityMeta,
   statusMeta,
@@ -483,6 +484,9 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
         </div>
       )}
 
+      {/* AI Risk Prediction */}
+      <RiskPredictionPanel patient={patient} />
+
       <div className="mt-5 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -596,6 +600,39 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
           ✓ Prescription delivered to {patient.patient_name}
         </p>
       )}
+    </div>
+  );
+}
+
+function RiskPredictionPanel({ patient }: { patient: PatientRecord }) {
+  const { t } = useI18n();
+  const risks = useMemo(() => predictRisks(patient), [patient.id]);
+
+  if (risks.length === 0) return null;
+
+  const severityColor = (s: string) =>
+    s === "high" ? "border-destructive/30 bg-destructive/10 text-destructive"
+      : s === "medium" ? "border-warning/30 bg-warning/10 text-[oklch(0.45_0.12_60)]"
+        : "border-success/30 bg-success/10 text-success";
+
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+      <div className="flex items-center gap-2 text-primary mb-3">
+        <TrendingUp className="h-3.5 w-3.5" />
+        <p className="text-[10px] font-semibold uppercase tracking-wider">{t("risk.title")}</p>
+      </div>
+      <div className="space-y-2">
+        {risks.map((r, i) => (
+          <div key={i} className={`rounded-xl border p-3 ${severityColor(r.severity)}`}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">{r.disease}</p>
+              <span className="text-xs font-bold">{r.probability}% {t("risk.probability")}</span>
+            </div>
+            <p className="mt-1 text-xs opacity-80">{r.reasoning}</p>
+            <p className="mt-1 text-xs font-medium">💊 {r.recommendation}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -54,6 +54,12 @@ export interface PatientRecord extends TriageResult {
   history?: PatientHistoryEntry[];
   /** Whether the doctor has sent a prescription. */
   prescription_sent?: boolean;
+  /** Base64 encoded image of report/scan uploaded by patient. */
+  report_images?: string[];
+  /** Family member ID if consultation is for a family member. */
+  family_member_id?: string;
+  /** Family member name (for display). */
+  family_member_name?: string;
 }
 
 // AES-256 encryption key derived from a passphrase (for demo purposes).

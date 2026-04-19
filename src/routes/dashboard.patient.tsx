@@ -606,7 +606,7 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
   };
 
   return (
-    <div className="flex h-[550px] flex-col">
+    <div className="flex min-h-[550px] flex-col">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="font-display text-xs uppercase tracking-[0.18em] text-primary">{t("pd.step1")}</p>
@@ -641,22 +641,52 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
           <ImagePlus className="h-3.5 w-3.5" />
           {t("img.upload")}
-          <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => {
+          <input type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png" multiple className="hidden" onChange={(e) => {
             const files = e.target.files;
             if (!files) return;
             Array.from(files).forEach((file) => {
               if (file.size > 5 * 1024 * 1024) { toast.error("File too large (max 5MB)"); return; }
-              const reader = new FileReader();
-              reader.onload = () => {
-                const base64 = reader.result as string;
-                setUploadedImages((prev) => {
-                  const next = [...prev, { name: file.name, data: base64 }];
-                  onImagesChange(next.map((x) => x.data));
-                  return next;
-                });
-                toast.success(`📎 ${file.name} attached`);
-              };
-              reader.readAsDataURL(file);
+
+              // For images, compress via canvas. For PDFs, store as-is.
+              if (file.type.startsWith("image/")) {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  const MAX = 800;
+                  let w = img.width, h = img.height;
+                  if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else { w = Math.round(w * MAX / h); h = MAX; }
+                  }
+                  canvas.width = w;
+                  canvas.height = h;
+                  canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+                  const compressed = canvas.toDataURL("image/jpeg", 0.7);
+                  URL.revokeObjectURL(url);
+                  setUploadedImages((prev) => {
+                    const next = [...prev, { name: file.name, data: compressed }];
+                    onImagesChange(next.map((x) => x.data));
+                    return next;
+                  });
+                  toast.success(`📎 ${file.name} attached`);
+                };
+                img.src = url;
+              } else {
+                // PDF — store as base64 (smaller PDFs only)
+                if (file.size > 2 * 1024 * 1024) { toast.error("PDF too large (max 2MB for storage)"); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const base64 = reader.result as string;
+                  setUploadedImages((prev) => {
+                    const next = [...prev, { name: file.name, data: base64 }];
+                    onImagesChange(next.map((x) => x.data));
+                    return next;
+                  });
+                  toast.success(`📎 ${file.name} attached`);
+                };
+                reader.readAsDataURL(file);
+              }
             });
             e.target.value = "";
           }} />

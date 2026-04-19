@@ -470,13 +470,30 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
           <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">📎 {t("img.attached")} ({patient.report_images.length})</p>
           <div className="flex flex-wrap gap-2">
             {patient.report_images.map((img, i) => (
-              <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-border overflow-hidden hover:border-primary transition-colors">
+              <button key={i} onClick={() => {
+                // Convert base64 to blob and open in new tab
+                try {
+                  const byteString = atob(img.split(",")[1]);
+                  const mimeMatch = img.match(/data:([^;]+);/);
+                  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+                  const ab = new ArrayBuffer(byteString.length);
+                  const ia = new Uint8Array(ab);
+                  for (let j = 0; j < byteString.length; j++) ia[j] = byteString.charCodeAt(j);
+                  const blob = new Blob([ab], { type: mime });
+                  const url = URL.createObjectURL(blob);
+                  window.open(url, "_blank");
+                } catch { window.open(img, "_blank"); }
+              }} className="block rounded-xl border border-border overflow-hidden hover:border-primary hover:shadow-md transition-all cursor-pointer">
                 {img.startsWith("data:image") ? (
                   <img src={img} alt={`Report ${i + 1}`} className="h-20 w-20 object-cover" />
                 ) : (
-                  <div className="flex h-20 w-20 items-center justify-center bg-secondary text-xs text-muted-foreground font-medium">PDF {i + 1}</div>
+                  <div className="flex h-20 w-20 flex-col items-center justify-center bg-destructive/5 border-destructive/10">
+                    <FileText className="h-6 w-6 text-destructive" />
+                    <span className="mt-1 text-[10px] font-bold text-destructive">PDF {i + 1}</span>
+                    <span className="text-[8px] text-muted-foreground">Click to open</span>
+                  </div>
                 )}
-              </a>
+              </button>
             ))}
           </div>
         </div>

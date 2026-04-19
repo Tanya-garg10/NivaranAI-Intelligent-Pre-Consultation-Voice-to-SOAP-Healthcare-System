@@ -701,11 +701,14 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
       {uploadedImages.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {uploadedImages.map((img, i) => (
-            <div key={i} className="group relative rounded-xl border border-border bg-background p-1 shadow-sm">
+            <div key={i} className="group relative rounded-xl border border-border bg-background p-1.5 shadow-sm">
               {img.data.startsWith("data:image") ? (
                 <img src={img.data} alt={img.name} className="h-16 w-16 rounded-lg object-cover" />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-secondary text-xs text-muted-foreground">PDF</div>
+                <div className="flex h-16 w-16 flex-col items-center justify-center rounded-lg bg-destructive/5 border border-destructive/20">
+                  <FileText className="h-6 w-6 text-destructive" />
+                  <span className="mt-0.5 text-[9px] font-bold text-destructive">PDF</span>
+                </div>
               )}
               <button
                 onClick={() => setUploadedImages((prev) => {
@@ -713,9 +716,9 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
                   onImagesChange(next.map((x) => x.data));
                   return next;
                 })}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white shadow-sm"
               >✕</button>
-              <p className="mt-0.5 max-w-[64px] truncate text-[9px] text-muted-foreground">{img.name}</p>
+              <p className="mt-1 max-w-[64px] truncate text-center text-[9px] text-muted-foreground">{img.name}</p>
             </div>
           ))}
         </div>

@@ -21,6 +21,9 @@ import {
   MapPin,
   Send,
   AlertTriangle,
+  Users,
+  Plus,
+  ImagePlus,
 } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { useAuth } from "@/lib/auth";
@@ -45,6 +48,8 @@ import {
   type VoiceLang,
   type VoiceSession,
 } from "@/lib/voice";
+import { loadFamily, addFamilyMember, removeFamilyMember, type FamilyMember } from "@/lib/family";
+import { isOnline, registerConnectivityListeners, loadSyncQueue, processSyncQueue } from "@/lib/offline";
 
 export const Route = createFileRoute("/dashboard/patient")({
   head: () => ({ meta: [{ title: "Patient dashboard — NivaranAI" }] }),
@@ -55,6 +60,14 @@ function PatientDashboard() {
   const { user } = useAuth();
   const { t } = useI18n();
   const allPatients = usePatients();
+  const [online, setOnline] = useState(isOnline());
+
+  useEffect(() => {
+    return registerConnectivityListeners(
+      () => { setOnline(true); const n = processSyncQueue(); if (n > 0) toast.success(t("offline.synced")); },
+      () => setOnline(false),
+    );
+  }, [t]);
 
   const mine = allPatients.filter(
     (p) => user && decryptVault(p.patient_name).toLowerCase() === user.name.toLowerCase(),
@@ -68,10 +81,22 @@ function PatientDashboard() {
       title={`${t("pd.hello")}, ${user?.name.split(" ")[0] ?? "there"}`}
       subtitle={t("pd.subtitle")}
     >
+      {!online && (
+        <div className="mb-4 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-foreground flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+          {t("offline.banner")}
+          {loadSyncQueue().length > 0 && (
+            <span className="ml-auto text-xs text-muted-foreground">{loadSyncQueue().length} {t("offline.pending")}</span>
+          )}
+        </div>
+      )}
       <div className="grid gap-5 lg:grid-cols-3">
         <PatientWizard />
         <QueueCard latest={latest} position={queuePosition} totalWaiting={allPatients.length} />
         <SubmissionsCard records={mine} />
+      </div>
+      <div className="mt-5">
+        <FamilyProfilesCard userId={user?.email ?? user?.id ?? ""} />
       </div>
     </DashboardShell>
   );
@@ -603,6 +628,25 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
             className="w-full rounded-xl border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
           />
         </div>
+      </div>
+
+      {/* Image Upload for Reports */}
+      <div className="mb-3 flex items-center gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+          <ImagePlus className="h-3.5 w-3.5" />
+          {t("img.upload")}
+          <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => {
+            const files = e.target.files;
+            if (!files) return;
+            Array.from(files).forEach((file) => {
+              if (file.size > 5 * 1024 * 1024) { toast.error("File too large (max 5MB)"); return; }
+              const reader = new FileReader();
+              reader.onload = () => toast.success(`📎 ${file.name} attached`);
+              reader.readAsDataURL(file);
+            });
+          }} />
+        </label>
+        <span className="text-[10px] text-muted-foreground">{t("img.formats")}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-secondary/20 p-4 space-y-4">
@@ -1360,6 +1404,99 @@ function SoapBlock({ label, text }: { label: string; text: string }) {
     <div>
       <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{label}</p>
       <p className="mt-0.5 text-sm leading-relaxed text-foreground">{text}</p>
+    </div>
+  );
+}
+
+/* ============================================================
+   Family Health Profiles
+   ============================================================ */
+
+function FamilyProfilesCard({ userId }: { userId: string }) {
+  const { t } = useI18n();
+  const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: "", relation: "spouse" as FamilyMember["relation"], age: "", gender: "", bloodGroup: "", allergies: "", preExisting: "" });
+
+  useEffect(() => {
+    if (userId) setMembers(loadFamily(userId));
+  }, [userId]);
+
+  const handleAdd = () => {
+    if (!form.name.trim()) return;
+    const m = addFamilyMember(userId, {
+      name: form.name,
+      relation: form.relation,
+      age: form.age ? Number(form.age) : undefined,
+      gender: form.gender || undefined,
+      bloodGroup: form.bloodGroup || undefined,
+      allergies: form.allergies || undefined,
+      preExisting: form.preExisting || undefined,
+    });
+    setMembers((prev) => [...prev, m]);
+    setForm({ name: "", relation: "spouse", age: "", gender: "", bloodGroup: "", allergies: "", preExisting: "" });
+    setShowForm(false);
+    toast.success(`${form.name} added to family profile`);
+  };
+
+  const handleRemove = (id: string) => {
+    removeFamilyMember(userId, id);
+    setMembers((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const relations: FamilyMember["relation"][] = ["self", "spouse", "child", "parent", "sibling", "other"];
+
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-soft">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-primary">
+          <Users className="h-4 w-4" />
+          <p className="font-display text-xs uppercase tracking-[0.18em]">{t("family.title")}</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-secondary">
+          <Plus className="h-3 w-3" /> {t("family.addMember")}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-4 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("family.name")} className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+            <select value={form.relation} onChange={(e) => setForm({ ...form, relation: e.target.value as FamilyMember["relation"] })} className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+              {relations.map((r) => <option key={r} value={r}>{t(`family.${r}`)}</option>)}
+            </select>
+            <input value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} placeholder={t("family.age")} type="number" className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+            <input value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} placeholder={t("family.gender")} className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+            <input value={form.bloodGroup} onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })} placeholder={t("family.bloodGroup")} className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+            <input value={form.allergies} onChange={(e) => setForm({ ...form, allergies: e.target.value })} placeholder={t("family.allergies")} className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          </div>
+          <input value={form.preExisting} onChange={(e) => setForm({ ...form, preExisting: e.target.value })} placeholder={t("family.preExisting")} className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          <button onClick={handleAdd} disabled={!form.name.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+            {t("family.save")}
+          </button>
+        </div>
+      )}
+
+      {members.length === 0 && !showForm ? (
+        <p className="mt-4 text-sm text-muted-foreground">{t("family.noMembers")}</p>
+      ) : (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {members.map((m) => (
+            <div key={m.id} className="rounded-2xl border border-border bg-background p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-foreground">{m.name}</p>
+                <button onClick={() => handleRemove(m.id)} className="text-xs text-destructive hover:underline">{t("family.remove")}</button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t(`family.${m.relation}`)} {m.age ? `· ${m.age} yrs` : ""} {m.gender ? `· ${m.gender}` : ""}
+              </p>
+              {m.bloodGroup && <p className="text-xs text-muted-foreground">🩸 {m.bloodGroup}</p>}
+              {m.preExisting && <p className="text-xs text-warning">⚠️ {m.preExisting}</p>}
+              {m.allergies && <p className="text-xs text-destructive">🚫 {m.allergies}</p>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

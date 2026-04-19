@@ -287,6 +287,49 @@ const en: Dict = {
   "hd.backToLogin": "Back to login",
   "hd.awaitingApproval": "Awaiting approval",
   "hd.logout": "Logout",
+
+  // ── Family Profiles ──
+  "family.title": "Family Health Profiles",
+  "family.addMember": "Add Family Member",
+  "family.name": "Name",
+  "family.relation": "Relation",
+  "family.age": "Age",
+  "family.gender": "Gender",
+  "family.bloodGroup": "Blood Group",
+  "family.allergies": "Allergies",
+  "family.preExisting": "Pre-existing Conditions",
+  "family.self": "Self",
+  "family.spouse": "Spouse",
+  "family.child": "Child",
+  "family.parent": "Parent",
+  "family.sibling": "Sibling",
+  "family.other": "Other",
+  "family.noMembers": "No family members added yet.",
+  "family.consultFor": "Consulting for",
+  "family.remove": "Remove",
+  "family.save": "Save Member",
+
+  // ── Image Upload ──
+  "img.upload": "Upload Report / Scan",
+  "img.attached": "Reports attached",
+  "img.preview": "View Reports",
+  "img.dragDrop": "Drag & drop or click to upload",
+  "img.formats": "JPG, PNG, PDF (max 5MB)",
+
+  // ── AI Risk Prediction ──
+  "risk.title": "AI Risk Prediction",
+  "risk.probability": "Probability",
+  "risk.reasoning": "Reasoning",
+  "risk.recommendation": "Recommendation",
+  "risk.noRisks": "No significant risk patterns detected.",
+  "risk.high": "High Risk",
+  "risk.medium": "Medium Risk",
+  "risk.low": "Low Risk",
+
+  // ── Offline Mode ──
+  "offline.banner": "You are offline. Data is saved locally and will sync when connected.",
+  "offline.synced": "Back online! Data synced.",
+  "offline.pending": "pending actions",
 };
 
 const hi: Dict = {
@@ -572,6 +615,49 @@ const hi: Dict = {
   "hd.backToLogin": "लॉगिन पर वापस",
   "hd.awaitingApproval": "स्वीकृति की प्रतीक्षा",
   "hd.logout": "लॉग आउट",
+
+  // ── Family Profiles ──
+  "family.title": "पारिवारिक स्वास्थ्य प्रोफ़ाइल",
+  "family.addMember": "परिवार का सदस्य जोड़ें",
+  "family.name": "नाम",
+  "family.relation": "संबंध",
+  "family.age": "उम्र",
+  "family.gender": "लिंग",
+  "family.bloodGroup": "रक्त समूह",
+  "family.allergies": "एलर्जी",
+  "family.preExisting": "पहले से मौजूद स्थितियाँ",
+  "family.self": "स्वयं",
+  "family.spouse": "पति/पत्नी",
+  "family.child": "बच्चा",
+  "family.parent": "माता-पिता",
+  "family.sibling": "भाई-बहन",
+  "family.other": "अन्य",
+  "family.noMembers": "अभी कोई परिवार का सदस्य नहीं जोड़ा गया।",
+  "family.consultFor": "के लिए परामर्श",
+  "family.remove": "हटाएँ",
+  "family.save": "सदस्य सहेजें",
+
+  // ── Image Upload ──
+  "img.upload": "रिपोर्ट / स्कैन अपलोड करें",
+  "img.attached": "रिपोर्ट संलग्न",
+  "img.preview": "रिपोर्ट देखें",
+  "img.dragDrop": "अपलोड करने के लिए खींचें और छोड़ें या क्लिक करें",
+  "img.formats": "JPG, PNG, PDF (अधिकतम 5MB)",
+
+  // ── AI Risk Prediction ──
+  "risk.title": "एआई जोखिम भविष्यवाणी",
+  "risk.probability": "संभावना",
+  "risk.reasoning": "तर्क",
+  "risk.recommendation": "सिफ़ारिश",
+  "risk.noRisks": "कोई महत्वपूर्ण जोखिम पैटर्न नहीं मिला।",
+  "risk.high": "उच्च जोखिम",
+  "risk.medium": "मध्यम जोखिम",
+  "risk.low": "कम जोखिम",
+
+  // ── Offline Mode ──
+  "offline.banner": "आप ऑफ़लाइन हैं। डेटा स्थानीय रूप से सहेजा गया है और कनेक्ट होने पर सिंक होगा।",
+  "offline.synced": "वापस ऑनलाइन! डेटा सिंक हो गया।",
+  "offline.pending": "लंबित कार्य",
 };
 
 const dicts: Record<Lang, Dict> = { en, hi };

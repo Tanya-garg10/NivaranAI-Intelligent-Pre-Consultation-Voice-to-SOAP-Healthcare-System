@@ -217,7 +217,14 @@ export function loadPatients(): PatientRecord[] {
 
 export function savePatients(patients: PatientRecord[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+  try {
+    window.localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
+  } catch (e) {
+    // localStorage quota exceeded — try saving without images
+    console.warn("localStorage quota exceeded, stripping images", e);
+    const stripped = patients.map((p) => ({ ...p, report_images: undefined }));
+    try { window.localStorage.setItem(PATIENTS_KEY, JSON.stringify(stripped)); } catch { /* give up */ }
+  }
   // Notify same-tab subscribers (storage event only fires across tabs)
   window.dispatchEvent(new CustomEvent("nivaranai:patients", { detail: patients }));
 }

@@ -464,6 +464,24 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
         <span className="font-semibold text-foreground">{t("dd.patientSaid")}:</span> "{patient.transcript}"
       </div>
 
+      {/* Uploaded Reports/Scans */}
+      {patient.report_images && patient.report_images.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-border bg-background p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">📎 {t("img.attached")} ({patient.report_images.length})</p>
+          <div className="flex flex-wrap gap-2">
+            {patient.report_images.map((img, i) => (
+              <a key={i} href={img} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-border overflow-hidden hover:border-primary transition-colors">
+                {img.startsWith("data:image") ? (
+                  <img src={img} alt={`Report ${i + 1}`} className="h-20 w-20 object-cover" />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center bg-secondary text-xs text-muted-foreground font-medium">PDF {i + 1}</div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* History timeline */}
       {patient.history && patient.history.length > 0 && (
         <div className="mt-4 rounded-2xl border border-border bg-background p-3">

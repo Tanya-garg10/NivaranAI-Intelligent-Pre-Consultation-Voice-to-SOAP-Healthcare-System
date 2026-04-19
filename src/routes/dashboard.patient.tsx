@@ -126,6 +126,7 @@ function PatientWizard() {
   const [gpsLocation, setGpsLocation] = useState<string | null>(null);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencyInput, setEmergencyInput] = useState("");
+  const [reportImages, setReportImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.geolocation) {
@@ -246,6 +247,7 @@ function PatientWizard() {
       timestamp: Date.now(),
       assignment: a,
       suggested_department: analysis.suggested_department,
+      report_images: reportImages.length > 0 ? reportImages : undefined,
     };
     addPatient(rec);
     setAssignment(a);
@@ -348,6 +350,7 @@ function PatientWizard() {
               setIsDistressed={setIsDistressed}
               onNext={(full) => runAnalyze(full)}
               analyzing={analyzing}
+              onImagesChange={setReportImages}
             />
           </motion.div>
         )}
@@ -428,6 +431,7 @@ function ChatIntakeStep({
   setIsDistressed,
   onNext,
   analyzing,
+  onImagesChange,
 }: {
   location: string;
   setLocation: (val: string) => void;
@@ -435,6 +439,7 @@ function ChatIntakeStep({
   setIsDistressed: (val: boolean) => void;
   onNext: (finalTranscript: string) => void;
   analyzing: boolean;
+  onImagesChange: (images: string[]) => void;
 }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<{ role: "ai" | "user"; text: string }[]>([
@@ -459,6 +464,7 @@ function ChatIntakeStep({
     delays: [] as number[],
   });
   const [showAnalysisTooltip, setShowAnalysisTooltip] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<{ name: string; data: string }[]>([]);
 
   useEffect(() => {
     setSupported(isVoiceSupported());
@@ -631,7 +637,7 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
       </div>
 
       {/* Image Upload for Reports */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
           <ImagePlus className="h-3.5 w-3.5" />
           {t("img.upload")}
@@ -641,13 +647,49 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
             Array.from(files).forEach((file) => {
               if (file.size > 5 * 1024 * 1024) { toast.error("File too large (max 5MB)"); return; }
               const reader = new FileReader();
-              reader.onload = () => toast.success(`📎 ${file.name} attached`);
+              reader.onload = () => {
+                const base64 = reader.result as string;
+                setUploadedImages((prev) => {
+                  const next = [...prev, { name: file.name, data: base64 }];
+                  onImagesChange(next.map((x) => x.data));
+                  return next;
+                });
+                toast.success(`📎 ${file.name} attached`);
+              };
               reader.readAsDataURL(file);
             });
+            e.target.value = "";
           }} />
         </label>
         <span className="text-[10px] text-muted-foreground">{t("img.formats")}</span>
+        {uploadedImages.length > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+            📎 {uploadedImages.length} {t("img.attached")}
+          </span>
+        )}
       </div>
+      {uploadedImages.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {uploadedImages.map((img, i) => (
+            <div key={i} className="group relative rounded-xl border border-border bg-background p-1 shadow-sm">
+              {img.data.startsWith("data:image") ? (
+                <img src={img.data} alt={img.name} className="h-16 w-16 rounded-lg object-cover" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-secondary text-xs text-muted-foreground">PDF</div>
+              )}
+              <button
+                onClick={() => setUploadedImages((prev) => {
+                  const next = prev.filter((_, j) => j !== i);
+                  onImagesChange(next.map((x) => x.data));
+                  return next;
+                })}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+              >✕</button>
+              <p className="mt-0.5 max-w-[64px] truncate text-[9px] text-muted-foreground">{img.name}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-secondary/20 p-4 space-y-4">
         {messages.map((m, i) => (

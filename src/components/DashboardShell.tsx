@@ -19,7 +19,7 @@ export function DashboardShell({
   nav?: ReactNode;
 }) {
   const { user, signOut, loading } = useAuth();
-  const { lang, setLang } = useI18n();
+  const { lang, setLang, t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,7 +35,7 @@ export function DashboardShell({
   if (loading || !user || user.role !== requiredRole) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">{t("shell.loading")}</div>
       </div>
     );
   }
@@ -47,32 +47,21 @@ export function DashboardShell({
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2.5">
               <Logo className="h-8 w-8" />
-              <span className="hidden font-display text-base font-semibold tracking-tight sm:inline">
-                NivaranAI
-              </span>
+              <span className="hidden font-display text-base font-semibold tracking-tight sm:inline">NivaranAI</span>
             </Link>
             <span className="hidden h-5 w-px bg-border sm:block" />
             <span className="hidden text-xs uppercase tracking-wider text-muted-foreground sm:inline">
-              {requiredRole === "doctor" ? "Clinician" : "Patient"}
+              {requiredRole === "doctor" ? t("shell.clinician") : t("shell.patient")}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLang(lang === "en" ? "hi" : "en")}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
+            <button onClick={() => setLang(lang === "en" ? "hi" : "en")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <Globe className="h-3.5 w-3.5" />
               {lang === "en" ? "EN" : "हिं"}
             </button>
-            <button
-              onClick={() => {
-                signOut();
-                navigate({ to: "/" });
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
+            <button onClick={() => { signOut(); navigate({ to: "/" }); }} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
               <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
+              <span className="hidden sm:inline">{t("nav.signOut")}</span>
             </button>
           </div>
         </div>
@@ -81,15 +70,10 @@ export function DashboardShell({
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-3 w-3" /> Back to site
+            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-3 w-3" /> {t("shell.backToSite")}
             </Link>
-            <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-              {title}
-            </h1>
+            <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
           {nav}

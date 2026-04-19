@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Building2, Stethoscope, Plus, Trash2, LogOut, Mail, ShieldCheck, AlertTriangle, Map } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
+import { useI18n } from "@/lib/i18n";
 import { useFacilities } from "@/hooks/useFacilities";
 import { usePatients } from "@/hooks/usePatients";
 import { addDepartment, addDoctor, deleteDoctor, type Facility } from "@/lib/hospitals";
@@ -100,7 +101,7 @@ function HospitalDashboard() {
             <LogOut className="h-3.5 w-3.5" /> Logout
           </button>
         </div>
-        
+
         <EpidemicRadar allPatients={allPatients} />
 
         <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -118,21 +119,21 @@ function EpidemicRadar({ allPatients }: { allPatients: any[] }) {
     let loc = p.location || "Bhopal";
     const pincodeMatch = String(loc).match(/\b\d{6}\b/);
     if (pincodeMatch) loc = pincodeMatch[0]; // strictly apply 6-digit pin code
-    
+
     const title = p.main_symptom?.toLowerCase() || "";
-    const symptom = title.includes("fever") ? "Fever" : 
-                    title.includes("cough") ? "Respiratory" : null;
+    const symptom = title.includes("fever") ? "Fever" :
+      title.includes("cough") ? "Respiratory" : null;
     if (symptom) {
-       const key = `${loc}|${symptom}`;
-       if (!acc[key]) acc[key] = [];
-       acc[key].push(p);
+      const key = `${loc}|${symptom}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(p);
     }
     return acc;
   }, {} as Record<string, any[]>);
 
   // Find outbreaks (threshold 5+)
   const outbreaks = Object.entries(clusters)
-    .filter(([_, patients]: [string, any]) => patients.length >= 5) 
+    .filter(([_, patients]: [string, any]) => patients.length >= 5)
     .map(([key, patients]: [string, any]) => {
       const [loc, symptom] = key.split("|");
       return { loc, symptom, count: patients.length, patients };
@@ -149,63 +150,62 @@ function EpidemicRadar({ allPatients }: { allPatients: any[] }) {
 
       {/* Epidemic Heatmap Visualization Grid */}
       <div className="mb-5 p-4 bg-background rounded-xl border border-destructive/20 relative overflow-hidden shadow-inner">
-         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-destructive/10 to-transparent pointer-events-none"></div>
-         <div className="flex items-center justify-between mb-3 relative z-10">
-           <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Live Pincode Heatmap</p>
-           <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold text-destructive animate-pulse">
-             <span className="h-2 w-2 rounded-full bg-destructive"></span> Live Tracking
-           </span>
-         </div>
-         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 relative z-10">
-            {Array.from(new Set(["462001", "462002", "462003", "462016", "462021", "462022", "462023", "462024", ...outbreaks.map(o => o.loc)])).slice(0, 10).map((zone) => {
-               const outbreak = outbreaks.find(o => o.loc === zone);
-               return (
-                  <div key={zone} className={`flex flex-col items-center justify-center p-2 rounded-lg text-xs font-mono border transition-all ${
-                     outbreak ? 'bg-destructive text-destructive-foreground border-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse scale-105 z-10' : 'bg-secondary/40 text-muted-foreground border-border/50 opacity-60'
-                  }`}>
-                    <span className="font-bold">{zone}</span>
-                    {outbreak ? (
-                       <span className="mt-1 bg-background text-destructive px-1.5 py-0.5 rounded-full text-[10px] shadow-sm">{outbreak.count} {outbreak.symptom}</span>
-                    ) : (
-                       <span className="mt-1 text-[9px] opacity-40">Clear</span>
-                    )}
-                  </div>
-               )
-            })}
-         </div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-destructive/10 to-transparent pointer-events-none"></div>
+        <div className="flex items-center justify-between mb-3 relative z-10">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Live Pincode Heatmap</p>
+          <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold text-destructive animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-destructive"></span> Live Tracking
+          </span>
+        </div>
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 relative z-10">
+          {Array.from(new Set(["462001", "462002", "462003", "462016", "462021", "462022", "462023", "462024", ...outbreaks.map(o => o.loc)])).slice(0, 10).map((zone) => {
+            const outbreak = outbreaks.find(o => o.loc === zone);
+            return (
+              <div key={zone} className={`flex flex-col items-center justify-center p-2 rounded-lg text-xs font-mono border transition-all ${outbreak ? 'bg-destructive text-destructive-foreground border-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse scale-105 z-10' : 'bg-secondary/40 text-muted-foreground border-border/50 opacity-60'
+                }`}>
+                <span className="font-bold">{zone}</span>
+                {outbreak ? (
+                  <span className="mt-1 bg-background text-destructive px-1.5 py-0.5 rounded-full text-[10px] shadow-sm">{outbreak.count} {outbreak.symptom}</span>
+                ) : (
+                  <span className="mt-1 text-[9px] opacity-40">Clear</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
-         {outbreaks.map((ob, idx) => (
-            <div key={idx} className="flex flex-col gap-3 bg-background border border-destructive/30 p-4 rounded-xl shadow-sm">
-               <div className="flex items-center gap-3">
-                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                   <Map className="h-5 w-5" />
-                 </div>
-                 <div>
-                    <p className="text-sm font-semibold text-destructive">🚨 Possible outbreak detected</p>
-                    <p className="text-xs text-muted-foreground">{ob.symptom} cases increasing in {ob.loc} ({ob.count} recent cases)</p>
-                 </div>
-               </div>
-               
-               <div className="mt-2 rounded-lg border border-border/50 divide-y divide-border/50 bg-secondary/10">
-                 <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-secondary/30 rounded-t-lg">
-                   Patient Details & Contact Tracing
-                 </div>
-                 {ob.patients.map((p: any, pIdx: number) => (
-                   <div key={pIdx} className="px-3 py-2 text-xs flex justify-between items-center">
-                     <div>
-                       <span className="font-medium text-foreground">{decryptVault(p.patient_name)}</span>
-                       <span className="ml-2 text-muted-foreground">Age: {p.patient_age}</span>
-                     </div>
-                     <span className="tabular-nums font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
-                       {p.patient_phone || "No phone"}
-                     </span>
-                   </div>
-                 ))}
-               </div>
+        {outbreaks.map((ob, idx) => (
+          <div key={idx} className="flex flex-col gap-3 bg-background border border-destructive/30 p-4 rounded-xl shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <Map className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-destructive">🚨 Possible outbreak detected</p>
+                <p className="text-xs text-muted-foreground">{ob.symptom} cases increasing in {ob.loc} ({ob.count} recent cases)</p>
+              </div>
             </div>
-         ))}
+
+            <div className="mt-2 rounded-lg border border-border/50 divide-y divide-border/50 bg-secondary/10">
+              <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-secondary/30 rounded-t-lg">
+                Patient Details & Contact Tracing
+              </div>
+              {ob.patients.map((p: any, pIdx: number) => (
+                <div key={pIdx} className="px-3 py-2 text-xs flex justify-between items-center">
+                  <div>
+                    <span className="font-medium text-foreground">{decryptVault(p.patient_name)}</span>
+                    <span className="ml-2 text-muted-foreground">Age: {p.patient_age}</span>
+                  </div>
+                  <span className="tabular-nums font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
+                    {p.patient_phone || "No phone"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

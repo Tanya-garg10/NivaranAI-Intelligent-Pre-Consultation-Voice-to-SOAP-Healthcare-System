@@ -9,7 +9,21 @@ Severity guide (1-10):
 - 8-10: critical (chest pain, breathlessness, severe bleeding, stroke signs, syncope, anaphylaxis)
 
 Be conservative: when in doubt about red flags, score higher.
-For department, ALWAYS pick exactly one from the provided list of available departments. If none fit well, pick "General Medicine" (or the closest equivalent in the list).`;
+For department, ALWAYS pick exactly one from the provided list of available departments. If none fit well, pick "General Medicine" (or the closest equivalent in the list).
+
+You MUST respond with valid JSON only. No markdown, no explanation. Use this exact schema:
+{
+  "main_symptom": "string",
+  "duration": "string",
+  "severity": number,
+  "suggested_department": "string",
+  "soap": {
+    "subjective": "string",
+    "objective": "string",
+    "assessment": "string",
+    "plan": "string"
+  }
+}`;
 
 const fallback = (transcript: string) => {
   const t = transcript.toLowerCase();
@@ -19,11 +33,9 @@ const fallback = (transcript: string) => {
       duration: "A few hours",
       severity: 9,
       soap: {
-        subjective:
-          "Patient reports chest tightness and breathlessness onset earlier today. No prior cardiac history mentioned.",
+        subjective: "Patient reports chest tightness and breathlessness onset earlier today. No prior cardiac history mentioned.",
         objective: "Awaiting vitals. Observe for diaphoresis, pallor, distress.",
-        assessment:
-          "Rule out acute coronary syndrome. Consider pulmonary embolism, panic attack as differentials.",
+        assessment: "Rule out acute coronary syndrome. Consider pulmonary embolism, panic attack as differentials.",
         plan: "Urgent triage. ECG, SpO2, BP, troponin. Aspirin 300mg if no contraindication. Escalate to ER physician.",
       },
     };
@@ -34,8 +46,7 @@ const fallback = (transcript: string) => {
       duration: "2 days",
       severity: 4,
       soap: {
-        subjective:
-          "Patient reports fever ~100°F with sore throat for 2 days. Mild difficulty swallowing, no body ache.",
+        subjective: "Patient reports fever ~100°F with sore throat for 2 days. Mild difficulty swallowing, no body ache.",
         objective: "Awaiting examination. Check throat, lymph nodes, temperature.",
         assessment: "Likely viral pharyngitis. Rule out streptococcal infection.",
         plan: "Symptomatic care: paracetamol 500mg PRN, warm saline gargles, hydration. Review in 3 days if not improved.",
@@ -76,7 +87,7 @@ export const Route = createFileRoute("/api/analyze")({
           return Response.json({ error: "Empty transcript" }, { status: 400 });
         }
 
-        const apiKey = process.env.LOVABLE_API_KEY;
+        const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) {
           const fb = fallback(transcript);
           return Response.json({
@@ -87,83 +98,36 @@ export const Route = createFileRoute("/api/analyze")({
         }
 
         try {
-          const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const userContent =
+            `Patient transcript:\n"""${transcript}"""\n\n` +
+            (availableDepartments.length
+              ? `Available departments (pick one): ${availableDepartments.join(", ")}\n\n`
+              : "") +
+            "Return a SOAP triage assessment as JSON only.";
+
+          const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${apiKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-3-flash-preview",
+              model: "llama-3.3-70b-versatile",
               messages: [
                 { role: "system", content: SYSTEM },
-                {
-                  role: "user",
-                  content:
-                    `Patient transcript:\n"""${transcript}"""\n\n` +
-                    (availableDepartments.length
-                      ? `Available departments (pick one): ${availableDepartments.join(", ")}\n\n`
-                      : "") +
-                    "Return a SOAP triage assessment.",
-                },
+                { role: "user", content: userContent },
               ],
-              tools: [
-                {
-                  type: "function",
-                  function: {
-                    name: "record_triage",
-                    description:
-                      "Record extracted symptom data, SOAP note, and best-fit department.",
-                    parameters: {
-                      type: "object",
-                      properties: {
-                        main_symptom: { type: "string", description: "One-line chief complaint." },
-                        duration: { type: "string", description: "How long symptoms have lasted." },
-                        severity: { type: "number", minimum: 1, maximum: 10 },
-                        suggested_department: {
-                          type: "string",
-                          description:
-                            "Best-fit department for the patient. MUST be one of the provided list when given.",
-                        },
-                        soap: {
-                          type: "object",
-                          properties: {
-                            subjective: { type: "string" },
-                            objective: { type: "string" },
-                            assessment: { type: "string" },
-                            plan: { type: "string" },
-                          },
-                          required: ["subjective", "objective", "assessment", "plan"],
-                          additionalProperties: false,
-                        },
-                      },
-                      required: [
-                        "main_symptom",
-                        "duration",
-                        "severity",
-                        "soap",
-                        "suggested_department",
-                      ],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-              ],
-              tool_choice: { type: "function", function: { name: "record_triage" } },
+              temperature: 0.3,
+              max_tokens: 800,
+              response_format: { type: "json_object" },
             }),
           });
 
           if (resp.status === 429) {
             return Response.json({ error: "Rate limited. Please wait a moment." }, { status: 429 });
           }
-          if (resp.status === 402) {
-            return Response.json(
-              { error: "AI credits exhausted. Add credits in Lovable workspace." },
-              { status: 402 },
-            );
-          }
           if (!resp.ok) {
-            console.error("AI gateway error", resp.status, await resp.text());
+            console.error("Groq API error", resp.status, await resp.text());
             const fb = fallback(transcript);
             return Response.json({
               ...fb,
@@ -173,9 +137,8 @@ export const Route = createFileRoute("/api/analyze")({
           }
 
           const data = await resp.json();
-          const call = data.choices?.[0]?.message?.tool_calls?.[0];
-          const args = call?.function?.arguments;
-          if (!args) {
+          const content = data.choices?.[0]?.message?.content;
+          if (!content) {
             const fb = fallback(transcript);
             return Response.json({
               ...fb,
@@ -183,7 +146,9 @@ export const Route = createFileRoute("/api/analyze")({
               source: "fallback",
             });
           }
-          const parsed = typeof args === "string" ? JSON.parse(args) : args;
+
+          const parsed = JSON.parse(content);
+
           // Snap AI's suggestion onto the available list (case-insensitive) when possible.
           if (availableDepartments.length && parsed.suggested_department) {
             const match = availableDepartments.find(

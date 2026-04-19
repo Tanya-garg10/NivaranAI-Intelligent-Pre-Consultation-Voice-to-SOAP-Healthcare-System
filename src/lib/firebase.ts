@@ -2,19 +2,17 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 
-// Firebase configuration — all values from environment variables.
-// Add these to your .env or deployment env vars:
-//   VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
-//   VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID,
-//   VITE_FIREBASE_APP_ID, VITE_FIREBASE_MEASUREMENT_ID
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Note: Firebase client config is safe to expose — security is handled by Firebase Security Rules.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "",
+  apiKey: "REMOVED_KEY",
+  authDomain: "connection-crm.firebaseapp.com",
+  projectId: "connection-crm",
+  storageBucket: "connection-crm.firebasestorage.app",
+  messagingSenderId: "561033372566",
+  appId: "1:561033372566:web:6f09526269fa9eba4533b7",
+  measurementId: "G-PD4VHETK9M",
 };
 
 // Initialize Firebase
@@ -24,7 +22,7 @@ if (typeof window !== "undefined") {
   try {
     analytics = getAnalytics(app);
   } catch {
-    // Analytics may fail if config is empty — that's fine
+    // Analytics may fail in some environments — that's fine
   }
 }
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check, Loader2, Upload } from "lucide-react";
 import { Header } from "@/components/Header";
 import { useAuth } from "@/lib/auth";
+import { approvedFacilities, addDoctor } from "@/lib/hospitals";
 
 export const Route = createFileRoute("/signup/doctor")({
   head: () => ({
@@ -17,10 +18,14 @@ type Form = {
   password: string;
   specialty: string;
   degreeFile: string;
+  degreeFileName?: string;
   licenseFile: string;
+  licenseFileName?: string;
   hospitalName: string;
   hospitalType: "Government" | "Private";
   hospitalAddress: string;
+  facilityId: string;
+  departmentId: string;
 };
 
 const STEPS = ["Basic info", "Documents", "Hospital", "Review"] as const;
@@ -41,12 +46,31 @@ function DoctorSignup() {
     hospitalName: "",
     hospitalType: "Private",
     hospitalAddress: "",
+    facilityId: "",
+    departmentId: "",
   });
 
-  const update = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v });
+  const facilities = approvedFacilities();
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const update = <K extends keyof Form>(k: K, v: Form[K]) => setForm(prev => ({ ...prev, [k]: v }));
+  const updates = (changes: Partial<Form>) => setForm(prev => ({ ...prev, ...changes }));
+
+  const isStepValid = () => {
+    if (step === 0) return !!(form.name && form.email && form.password && form.specialty);
+    if (step === 1) return !!(form.degreeFile && form.licenseFile);
+    if (step === 2) return !!(form.facilityId && form.departmentId);
+    return true;
+  };
+
+  const next = () => {
+    if (!isStepValid()) {
+      setError("Please fill all required fields before continuing.");
+      return;
+    }
+    setError(null);
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+  const back = () => { setError(null); setStep((s) => Math.max(s - 1, 0)); };
 
   const submit = async () => {
     setError(null);
@@ -58,12 +82,25 @@ function DoctorSignup() {
         password: form.password,
         specialty: form.specialty,
         hospital: {
-          name: form.hospitalName,
-          type: form.hospitalType,
+          name: form.facilityId ? (facilities.find(f => f.id === form.facilityId)?.name || "Unknown") : form.hospitalName,
+          type: "Private",
           address: form.hospitalAddress,
         },
         documents: { degree: form.degreeFile, license: form.licenseFile },
       });
+      
+      if (form.facilityId && form.departmentId) {
+         addDoctor(form.facilityId, {
+            name: `Dr. ${form.name}`,
+            specialty: form.specialty,
+            departmentId: form.departmentId,
+            email: form.email,
+            status: "pending",
+            degreeFile: form.degreeFile,
+            licenseFile: form.licenseFile
+         });
+      }
+      
       navigate({ to: "/dashboard/doctor" });
     } catch {
       setError("Could not submit your application.");
@@ -119,54 +156,50 @@ function DoctorSignup() {
             <div className="space-y-4">
               <FileField
                 label="Degree certificate"
-                file={form.degreeFile}
-                onFile={(name) => update("degreeFile", name)}
+                fileName={form.degreeFileName}
+                onFile={(data, name) => updates({ degreeFile: data, degreeFileName: name })}
               />
               <FileField
                 label="Medical license"
-                file={form.licenseFile}
-                onFile={(name) => update("licenseFile", name)}
+                fileName={form.licenseFileName}
+                onFile={(data, name) => updates({ licenseFile: data, licenseFileName: name })}
               />
               <p className="text-xs text-muted-foreground">
-                Files are not uploaded yet — this is a UI preview. Once Firebase is connected,
-                uploads will go to secure storage.
+                Files are securely converted to Base64 and attached to your application for review.
               </p>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-4">
-              <Field
-                label="Hospital name"
-                value={form.hospitalName}
-                onChange={(v) => update("hospitalName", v)}
-              />
               <div>
-                <label className="block text-xs font-medium text-muted-foreground">
-                  Hospital type
-                </label>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {(["Government", "Private"] as const).map((t) => (
-                    <button
-                      type="button"
-                      key={t}
-                      onClick={() => update("hospitalType", t)}
-                      className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
-                        form.hospitalType === t
-                          ? "border-primary bg-primary/10 text-mineral"
-                          : "border-border bg-background text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {t}
-                    </button>
+                <label className="block text-xs font-medium text-muted-foreground">Select Approved Hospital / Clinic</label>
+                <select
+                  value={form.facilityId}
+                  onChange={(e) => update("facilityId", e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">Select a facility</option>
+                  {facilities.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name} — {f.location}</option>
                   ))}
-                </div>
+                </select>
               </div>
-              <Field
-                label="Address"
-                value={form.hospitalAddress}
-                onChange={(v) => update("hospitalAddress", v)}
-              />
+              {form.facilityId && (
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground">Select Department</label>
+                  <select
+                    value={form.departmentId}
+                    onChange={(e) => update("departmentId", e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  >
+                    <option value="">Select a department</option>
+                    {facilities.find(f => f.id === form.facilityId)?.departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
@@ -175,10 +208,10 @@ function DoctorSignup() {
               <ReviewRow label="Name" value={form.name} />
               <ReviewRow label="Email" value={form.email} />
               <ReviewRow label="Specialty" value={form.specialty || "—"} />
-              <ReviewRow label="Degree" value={form.degreeFile || "—"} />
-              <ReviewRow label="License" value={form.licenseFile || "—"} />
-              <ReviewRow label="Hospital" value={`${form.hospitalName} (${form.hospitalType})`} />
-              <ReviewRow label="Address" value={form.hospitalAddress} />
+              <ReviewRow label="Degree" value={form.degreeFileName || "—"} />
+              <ReviewRow label="License" value={form.licenseFileName || "—"} />
+              <ReviewRow label="Hospital" value={facilities.find(f => f.id === form.facilityId)?.name || '—'} />
+              <ReviewRow label="Department" value={facilities.find(f => f.id === form.facilityId)?.departments.find(d => d.id === form.departmentId)?.name || '—'} />
               <div className="mt-4 rounded-2xl bg-secondary px-4 py-3 text-xs text-muted-foreground">
                 After submission your status will be{" "}
                 <span className="font-semibold text-foreground">Pending</span>. You'll get full
@@ -294,24 +327,32 @@ function Field({
 
 function FileField({
   label,
-  file,
+  fileName,
   onFile,
 }: {
   label: string;
-  file: string;
-  onFile: (n: string) => void;
+  fileName?: string;
+  onFile: (data: string, n: string) => void;
 }) {
   return (
     <div>
       <label className="block text-xs font-medium text-muted-foreground">{label}</label>
       <label className="mt-1.5 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-background px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-secondary">
         <Upload className="h-4 w-4" />
-        <span>{file || "Click to upload PDF, JPG or PNG"}</span>
+        <span className="truncate">{fileName || "Click to upload PDF, JPG or PNG"}</span>
         <input
           type="file"
           accept=".pdf,image/*"
           className="hidden"
-          onChange={(e) => onFile(e.target.files?.[0]?.name ?? "")}
+          onChange={(e) => {
+             const file = e.target.files?.[0];
+             if (file) {
+                 if (file.size > 2 * 1024 * 1024) { alert("File too large > 2MB"); return; }
+                 const reader = new FileReader();
+                 reader.onload = ev => onFile(ev.target?.result as string, file.name);
+                 reader.readAsDataURL(file);
+             }
+          }}
         />
       </label>
     </div>

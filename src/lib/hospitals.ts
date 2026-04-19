@@ -22,6 +22,15 @@ export interface Doctor {
   facilityId: string;
   room?: string;
   available?: boolean;
+  status?: "pending" | "approved";
+  degreeFile?: string;
+  licenseFile?: string;
+  profilePhoto?: string;
+  dutyTiming?: string;
+  email?: string;
+  blacklistStatus?: "none" | "temporary" | "permanent";
+  blacklistReason?: string;
+  blacklistBy?: "admin" | "hospital";
 }
 
 export interface Facility {
@@ -32,6 +41,7 @@ export interface Facility {
   contact: string;
   email?: string;
   licenseFile?: string; // mock filename
+  licenseFileData?: string; // base64 content
   status: FacilityStatus;
   departments: Department[];
   doctors: Doctor[];
@@ -93,14 +103,14 @@ export function addDepartment(facilityId: string, name: string) {
 
 export function addDoctor(
   facilityId: string,
-  data: { name: string; specialty: string; departmentId: string; room?: string },
+  data: { name: string; specialty: string; departmentId: string; room?: string; status?: "pending" | "approved"; email?: string; degreeFile?: string; licenseFile?: string },
 ) {
   const list = loadFacilities().map((f) => {
     if (f.id !== facilityId) return f;
     if (f.type === "Clinic" && f.doctors.length >= 1) return f;
     return {
       ...f,
-      doctors: [...f.doctors, { id: crypto.randomUUID(), facilityId, available: true, ...data }],
+      doctors: [...f.doctors, { id: crypto.randomUUID(), facilityId, available: true, status: data.status || "approved", ...data }],
     };
   });
   saveFacilities(list);
@@ -109,6 +119,15 @@ export function addDoctor(
 export function deleteDoctor(facilityId: string, doctorId: string) {
   const list = loadFacilities().map((f) =>
     f.id === facilityId ? { ...f, doctors: f.doctors.filter((d) => d.id !== doctorId) } : f,
+  );
+  saveFacilities(list);
+}
+
+export function updateDoctor(facilityId: string, doctorId: string, patch: Partial<Doctor>) {
+  const list = loadFacilities().map((f) =>
+    f.id === facilityId
+      ? { ...f, doctors: f.doctors.map((d) => (d.id === doctorId ? { ...d, ...patch } : d)) }
+      : f
   );
   saveFacilities(list);
 }

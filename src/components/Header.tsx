@@ -39,62 +39,32 @@ export function Header() {
             <Logo className="h-8 w-8" />
             <span className="font-display text-lg font-semibold tracking-tight">NivaranAI</span>
           </Link>
-          <Link
-            to="/"
-            className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block"
-          >
-            Home
+          <Link to="/" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:block">
+            {t("nav.home")}
           </Link>
         </div>
 
         {onLandingPage && (
           <nav className="hidden items-center gap-8 md:flex">
             {navLinks.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {l.label}
-              </a>
+              <a key={l.href} href={l.href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">{l.label}</a>
             ))}
           </nav>
         )}
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            to="/signup/hospital"
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            For hospitals
-          </Link>
-          <Link
-            to="/contact"
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Contact
-          </Link>
-          <button
-            onClick={() => setLang(lang === "en" ? "hi" : "en")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Toggle language"
-          >
+          <Link to="/signup/hospital" className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">{t("header.forHospitals")}</Link>
+          <Link to="/contact" className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">{t("header.contact")}</Link>
+          <button onClick={() => setLang(lang === "en" ? "hi" : "en")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" aria-label="Toggle language">
             <Globe className="h-3.5 w-3.5" />
             {lang === "en" ? "EN" : "हिं"}
           </button>
-          <button
-            onClick={goDashboard}
-            className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-all hover:bg-mineral hover:shadow-soft"
-          >
+          <button onClick={goDashboard} className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-all hover:bg-mineral hover:shadow-soft">
             {user ? t("nav.dashboard") : t("nav.tryDemo")}
           </button>
         </div>
 
-        <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground md:hidden"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Toggle menu"
-        >
+        <button className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground md:hidden" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
@@ -102,39 +72,16 @@ export function Header() {
       {open && (
         <div className="border-t border-border bg-background/95 backdrop-blur md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1 px-5 py-4">
-            <Link
-              to="/"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
-              onClick={() => setOpen(false)}
-            >
-              Home
-            </Link>
-            {onLandingPage &&
-              navLinks.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className="rounded-lg px-3 py-2.5 text-sm text-foreground hover:bg-secondary"
-                  onClick={() => setOpen(false)}
-                >
-                  {l.label}
-                </a>
-              ))}
+            <Link to="/" className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary" onClick={() => setOpen(false)}>{t("nav.home")}</Link>
+            {onLandingPage && navLinks.map((l) => (
+              <a key={l.href} href={l.href} className="rounded-lg px-3 py-2.5 text-sm text-foreground hover:bg-secondary" onClick={() => setOpen(false)}>{l.label}</a>
+            ))}
             <div className="mt-2 flex items-center gap-2">
-              <button
-                onClick={() => setLang(lang === "en" ? "hi" : "en")}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-sm text-foreground"
-              >
+              <button onClick={() => setLang(lang === "en" ? "hi" : "en")} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-sm text-foreground">
                 <Globe className="h-4 w-4" />
                 {lang === "en" ? "English" : "हिंदी"}
               </button>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  goDashboard();
-                }}
-                className="inline-flex flex-1 items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
-              >
+              <button onClick={() => { setOpen(false); goDashboard(); }} className="inline-flex flex-1 items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">
                 {user ? t("nav.dashboard") : t("nav.tryDemo")}
               </button>
             </div>

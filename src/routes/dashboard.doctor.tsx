@@ -25,9 +25,12 @@ import {
   Mic,
   MicOff,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { predictRisks, type RiskPrediction } from "@/lib/riskPredict";
 import {
   priorityMeta,
   statusMeta,
@@ -53,6 +56,7 @@ type FilterKey = "all" | "critical" | "urgent" | "normal";
 
 function DoctorDashboard() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const allPatients = usePatients();
   const facilities = useFacilities();
 
@@ -106,17 +110,17 @@ function DoctorDashboard() {
     : "—";
 
   const subtitle = myDoctor
-    ? `Your queue at ${myDoctor.facility.name} · ${myDoctor.doctor.specialty}`
-    : "Live patient queue — sorted by AI triage priority. Click a card to view the SOAP note.";
+    ? `${t("dd.yourQueue")} ${myDoctor.facility.name} · ${myDoctor.doctor.specialty}`
+    : t("dd.liveQueue");
 
   return (
     <DashboardShell
       requiredRole="doctor"
-      title={`Good day, Dr. ${user?.name.split(" ")[0] ?? ""}`}
+      title={`${t("dd.goodDay")} ${user?.name.split(" ")[0] ?? ""}`}
       subtitle={subtitle}
       nav={
         <span className="hidden rounded-full bg-success/15 px-3 py-1.5 text-xs font-medium text-success sm:inline-flex">
-          ● Verified · Approved
+          {t("dd.verified")}
         </span>
       }
     >
@@ -127,9 +131,9 @@ function DoctorDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-primary">
               <Users className="h-4 w-4" />
-              <p className="font-display text-xs uppercase tracking-[0.18em]">My queue</p>
+              <p className="font-display text-xs uppercase tracking-[0.18em]">{t("dd.myQueue")}</p>
             </div>
-            <span className="text-xs text-muted-foreground">{visible.length} active</span>
+            <span className="text-xs text-muted-foreground">{visible.length} {t("dd.active")}</span>
           </div>
 
           <FilterBar value={filter} onChange={setFilter} counts={counts} />
@@ -158,8 +162,8 @@ function DoctorDashboard() {
                 <li className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center text-sm text-muted-foreground">
                   <Inbox className="mx-auto mb-2 h-5 w-5" />
                   {myDoctor
-                    ? "No patients assigned to you right now."
-                    : "No patients in the queue yet."}
+                    ? t("dd.noPatients")
+                    : t("dd.noQueue")}
                 </li>
               )}
             </ul>
@@ -171,7 +175,7 @@ function DoctorDashboard() {
             <SoapPanel patient={active} onClear={() => setActiveId(null)} />
           ) : (
             <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center text-sm text-muted-foreground">
-              Select a patient from the queue to view their SOAP note.
+              {t("dd.selectPatient")}
             </div>
           )}
         </section>
@@ -191,16 +195,12 @@ function Stats({
   totalToday: number;
   avgSeverity: string;
 }) {
+  const { t } = useI18n();
   const stats = [
-    { icon: Users, label: "Patients today", value: String(totalToday) },
-    {
-      icon: AlertTriangle,
-      label: "Critical",
-      value: String(counts.critical),
-      tone: "destructive" as const,
-    },
-    { icon: Clock, label: "Urgent", value: String(counts.urgent), tone: "warning" as const },
-    { icon: TrendingUp, label: "Avg severity", value: avgSeverity, tone: "success" as const },
+    { icon: Users, label: t("dd.patientsToday"), value: String(totalToday) },
+    { icon: AlertTriangle, label: t("dd.critical"), value: String(counts.critical), tone: "destructive" as const },
+    { icon: Clock, label: t("dd.urgent"), value: String(counts.urgent), tone: "warning" as const },
+    { icon: TrendingUp, label: t("dd.avgSeverity"), value: avgSeverity, tone: "success" as const },
   ];
   const toneClass = (tone?: "destructive" | "warning" | "success") =>
     tone === "destructive"
@@ -243,11 +243,12 @@ function FilterBar({
   onChange: (v: FilterKey) => void;
   counts: Record<Priority, number>;
 }) {
+  const { t } = useI18n();
   const opts: { key: FilterKey; label: string; count?: number }[] = [
-    { key: "all", label: "All" },
-    { key: "critical", label: "Critical", count: counts.critical },
-    { key: "urgent", label: "Urgent", count: counts.urgent },
-    { key: "normal", label: "Normal", count: counts.normal },
+    { key: "all", label: t("dd.all") },
+    { key: "critical", label: t("dd.critical"), count: counts.critical },
+    { key: "urgent", label: t("dd.urgent"), count: counts.urgent },
+    { key: "normal", label: t("dd.normal"), count: counts.normal },
   ];
   return (
     <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -258,11 +259,10 @@ function FilterBar({
           <button
             key={o.key}
             onClick={() => onChange(o.key)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
-              active
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground"
-            }`}
+            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all ${active
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
           >
             {o.label}
             {typeof o.count === "number" && (
@@ -299,11 +299,10 @@ function PatientRow({
       whileHover={{ scale: 1.005, y: -1 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border bg-background/70 px-4 py-3.5 text-left transition-all ${
-        active
-          ? "border-primary shadow-elevated ring-2 " + m.ring
-          : "border-border hover:border-primary/40 hover:bg-secondary/60 hover:shadow-soft"
-      }`}
+      className={`flex w-full items-start gap-3 rounded-2xl border bg-background/70 px-4 py-3.5 text-left transition-all ${active
+        ? "border-primary shadow-elevated ring-2 " + m.ring
+        : "border-border hover:border-primary/40 hover:bg-secondary/60 hover:shadow-soft"
+        }`}
     >
       <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${m.dot}`} />
       <div className="min-w-0 flex-1">
@@ -352,6 +351,7 @@ function PatientRow({
 /* ---------------- SOAP panel ---------------- */
 
 function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () => void }) {
+  const { t } = useI18n();
   const m = priorityMeta[patient.priority];
   const status = patient.status ?? "pending";
   const sm = statusMeta[status];
@@ -377,11 +377,11 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-primary">
             <FileText className="h-4 w-4" />
-            <p className="font-display text-xs uppercase tracking-[0.18em]">SOAP note</p>
+            <p className="font-display text-xs uppercase tracking-[0.18em]">{t("dd.soapNote")}</p>
           </div>
           <h3 className="mt-1 truncate font-display text-xl font-semibold tracking-tight">
             {decryptVault(patient.patient_name)}
-            <span className="ml-2 inline-flex items-center gap-1 rounded bg-success/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-success"><Lock className="h-3 w-3" /> Data Protected</span>
+            <span className="ml-2 inline-flex items-center gap-1 rounded bg-success/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-success"><Lock className="h-3 w-3" /> {t("dd.dataProtected")}</span>
             {patient.patient_age ? (
               <span className="text-base font-normal text-muted-foreground">
                 {" "}
@@ -421,8 +421,8 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <p className="font-semibold">⚠️ Critical case — severity {patient.severity}/10</p>
-                <p className="text-destructive/80">Prioritize immediate examination.</p>
+                <p className="font-semibold">⚠️ {t("dd.criticalCase")} {patient.severity}/10</p>
+                <p className="text-destructive/80">{t("dd.prioritizeExam")}</p>
               </div>
             </motion.div>
           )}
@@ -436,9 +436,9 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.55_0.15_60)]" />
               <div>
                 <p className="font-semibold text-foreground">
-                  ⚠️ Pre-existing condition: {patient.pre_existing}
+                  ⚠️ {t("dd.preExisting")}: {patient.pre_existing}
                 </p>
-                <p>Consider drug interactions and comorbidity in your plan.</p>
+                <p>{t("dd.considerDrug")}</p>
               </div>
             </motion.div>
           )}
@@ -448,7 +448,7 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
       {patient.assignment && (
         <div className="mt-4 rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Assigned ({patient.assignment.mode})
+            {t("dd.assignedMode")} ({patient.assignment.mode})
           </p>
           <p className="mt-0.5 font-medium text-foreground">
             {patient.assignment.doctorName} · {patient.assignment.doctorSpecialty}
@@ -461,7 +461,7 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
       )}
 
       <div className="mt-4 rounded-2xl bg-secondary/50 p-3 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">Patient said:</span> "{patient.transcript}"
+        <span className="font-semibold text-foreground">{t("dd.patientSaid")}:</span> "{patient.transcript}"
       </div>
 
       {/* History timeline */}
@@ -469,7 +469,7 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
         <div className="mt-4 rounded-2xl border border-border bg-background p-3">
           <div className="flex items-center gap-2 text-primary">
             <History className="h-3.5 w-3.5" />
-            <p className="text-[10px] font-semibold uppercase tracking-wider">Previous visits</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider">{t("dd.previousVisits")}</p>
           </div>
           <ul className="mt-2 space-y-1.5">
             {patient.history.slice(0, 5).map((h) => (
@@ -484,36 +484,39 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
         </div>
       )}
 
+      {/* AI Risk Prediction */}
+      <RiskPredictionPanel patient={patient} />
+
       <div className="mt-5 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            AI-drafted SOAP{" "}
+            {t("dd.aiDraftedSoap")}{" "}
             {patient.source === "ai" && <Sparkles className="ml-1 inline h-3 w-3 text-primary" />}
           </p>
         </div>
-        
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10">S</span> Subjective
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10">S</span> {t("dd.subjective")}
             </h4>
             <p className="mt-2 text-sm text-foreground">{patient.soap.subjective}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[oklch(0.55_0.15_60)]">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning/10 text-[oklch(0.55_0.15_60)]">O</span> Objective
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning/10 text-[oklch(0.55_0.15_60)]">O</span> {t("dd.objective")}
             </h4>
             <p className="mt-2 text-sm text-foreground">{patient.soap.objective}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-destructive">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-destructive">A</span> Assessment
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-destructive">A</span> {t("dd.assessment")}
             </h4>
             <p className="mt-2 text-sm text-foreground">{patient.soap.assessment}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/50">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-success">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-success">P</span> Plan
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-success">P</span> {t("dd.plan")}
             </h4>
             <p className="mt-2 text-sm text-foreground">{patient.soap.plan}</p>
           </div>
@@ -523,10 +526,10 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
       {/* Action bar */}
       <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
         {status === "completed" && (
-           <button
-             onClick={() => {
-                const w = window.open('', '_blank');
-                w?.document.write(`
+          <button
+            onClick={() => {
+              const w = window.open('', '_blank');
+              w?.document.write(`
                   <html><head><title>Medical Report</title>
                   <style>
                     body { font-family: system-ui, sans-serif; padding: 40px; color: #111; line-height: 1.5; }
@@ -537,7 +540,7 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
                   </head><body>
                   <div class="header">
                     <h2>NivaranAI Medical Report</h2>
-                    <p><strong>Patient Name:</strong> ${patient.patient_name} ${patient.patient_age ? '('+patient.patient_age+' yrs)' : ''}</p>
+                    <p><strong>Patient Name:</strong> ${patient.patient_name} ${patient.patient_age ? '(' + patient.patient_age + ' yrs)' : ''}</p>
                     <p><strong>Condition:</strong> ${patient.main_symptom}</p>
                     <p><strong>Severity:</strong> ${patient.severity}/10</p>
                     <p><strong>Assigned Doctor:</strong> ${patient.assignment?.doctorName ?? "Not assigned"}</p>
@@ -551,12 +554,12 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
                   <script>window.print(); setTimeout(() => window.close(), 500);</script>
                   </body></html>
                 `);
-                w?.document.close();
-             }}
-             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
-           >
-             <FileText className="h-3.5 w-3.5" /> Download Report (PDF)
-           </button>
+              w?.document.close();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+          >
+            <FileText className="h-3.5 w-3.5" /> {t("dd.downloadReport")}
+          </button>
         )}
         {status === "pending" && (
           <>
@@ -564,13 +567,13 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
               onClick={() => setStatus("rejected", `Rejected ${patient.patient_name}`)}
               className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
             >
-              <XCircle className="h-3.5 w-3.5" /> Reject
+              <XCircle className="h-3.5 w-3.5" /> {t("dd.reject")}
             </button>
             <button
               onClick={() => setStatus("accepted", `Accepted ${patient.patient_name}`)}
               className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
             >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Accept
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t("dd.accept")}
             </button>
           </>
         )}
@@ -581,13 +584,13 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
             }
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-all hover:bg-mineral hover:shadow-soft"
           >
-            <Play className="h-3.5 w-3.5" /> Start consultation
+            <Play className="h-3.5 w-3.5" /> {t("dd.startConsultation")}
           </button>
         )}
         {status === "in_consult" && (
-          <ConsultationTools 
-            patient={patient} 
-            onComplete={() => setStatus("completed", `Marked complete · ${decryptVault(patient.patient_name)}`)} 
+          <ConsultationTools
+            patient={patient}
+            onComplete={() => setStatus("completed", `Marked complete · ${decryptVault(patient.patient_name)}`)}
           />
         )}
       </div>
@@ -597,6 +600,39 @@ function SoapPanel({ patient, onClear }: { patient: PatientRecord; onClear: () =
           ✓ Prescription delivered to {patient.patient_name}
         </p>
       )}
+    </div>
+  );
+}
+
+function RiskPredictionPanel({ patient }: { patient: PatientRecord }) {
+  const { t } = useI18n();
+  const risks = useMemo(() => predictRisks(patient), [patient.id]);
+
+  if (risks.length === 0) return null;
+
+  const severityColor = (s: string) =>
+    s === "high" ? "border-destructive/30 bg-destructive/10 text-destructive"
+      : s === "medium" ? "border-warning/30 bg-warning/10 text-[oklch(0.45_0.12_60)]"
+        : "border-success/30 bg-success/10 text-success";
+
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-background p-4">
+      <div className="flex items-center gap-2 text-primary mb-3">
+        <TrendingUp className="h-3.5 w-3.5" />
+        <p className="text-[10px] font-semibold uppercase tracking-wider">{t("risk.title")}</p>
+      </div>
+      <div className="space-y-2">
+        {risks.map((r, i) => (
+          <div key={i} className={`rounded-xl border p-3 ${severityColor(r.severity)}`}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">{r.disease}</p>
+              <span className="text-xs font-bold">{r.probability}% {t("risk.probability")}</span>
+            </div>
+            <p className="mt-1 text-xs opacity-80">{r.reasoning}</p>
+            <p className="mt-1 text-xs font-medium">💊 {r.recommendation}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -616,9 +652,10 @@ function timeAgo(ts: number) {
 }
 
 function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; onComplete: () => void }) {
+  const { t } = useI18n();
   const [drug, setDrug] = useState("");
   const [notes, setNotes] = useState("");
-  
+
   // Voice Recording functionality
   const [recordingTarget, setRecordingTarget] = useState<"notes" | "drug" | null>(null);
   const [starting, setStarting] = useState(false);
@@ -637,7 +674,7 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
       const s = await startVoice({
         lang: "en-IN",
         onInterim: (t) => {
-           // We can skip interim or handle it smoothly. Keeping it simple.
+          // We can skip interim or handle it smoothly. Keeping it simple.
         },
         onFinal: (t) => {
           if (target === "notes") setNotes((prev) => (prev ? `${prev.trim()} ${t.trim()}` : t.trim()));
@@ -666,28 +703,37 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
     sessionRef.current = null;
     setRecordingTarget(null);
   };
-  
+
   const handlePrescribe = () => {
     if (!drug) return;
-    // Mock Drug Interaction Engine
+    // Drug Interaction Engine
     const conflict = patient.pre_existing?.toLowerCase().includes("hypertension") && drug.toLowerCase().includes("ibuprofen");
     const allergy = drug.toLowerCase().includes("penicillin");
-    
+
     if (conflict || allergy) {
-      toast.error(`⚠️ Warning: ${drug} may interact with patient's condition or allergies.`);
+      toast.error(`⚠️ ${t("dd.drugWarning")} (${drug})`);
       return;
     }
-    
+
     updatePatient(patient.id, { prescription_sent: true });
-    toast.success("Prescription sent to patient ✅", {
-      description: "Delivered securely via SMS & Vault",
+    toast.success(t("dd.prescriptionSent"), {
+      description: t("dd.prescriptionSentDesc"),
     });
     setDrug("");
   };
 
+  const sendWhatsApp = () => {
+    const phone = patient.patient_phone?.replace(/\D/g, "") || "";
+    const name = decryptVault(patient.patient_name);
+    const msg = `NivaranAI Prescription\n\nPatient: ${name}\nDiagnosis: ${patient.main_symptom}\nPlan: ${patient.soap.plan}\n\nPrescribed: ${drug || "See doctor notes"}\n\n— ${patient.assignment?.doctorName || "Your Doctor"}`;
+    const url = `https://wa.me/${phone || "91"}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    toast.success(t("dd.whatsappPrescription") + " ✅");
+  };
+
   return (
     <div className="mt-4 w-full rounded-2xl border border-border bg-secondary/30 p-4">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Consultation Summary</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("dd.consultationSummary")}</h4>
       <div className="space-y-3">
         <div className="relative">
           <textarea
@@ -703,8 +749,8 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
               onClick={() => recordingTarget === "notes" ? stopRecording() : startRecording("notes")}
               className={`absolute right-2 top-2 rounded-lg p-1.5 transition-all ${recordingTarget === "notes" ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
             >
-              {recordingTarget === "notes" && starting ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-               recordingTarget === "notes" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {recordingTarget === "notes" && starting ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                recordingTarget === "notes" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </button>
           )}
         </div>
@@ -723,8 +769,8 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
                 onClick={() => recordingTarget === "drug" ? stopRecording() : startRecording("drug")}
                 className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-all ${recordingTarget === "drug" ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
               >
-                {recordingTarget === "drug" && starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 
-                 recordingTarget === "drug" ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                {recordingTarget === "drug" && starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+                  recordingTarget === "drug" ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
               </button>
             )}
           </div>
@@ -733,7 +779,13 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
             disabled={!drug}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
           >
-            <Send className="h-4 w-4" /> Prescribe
+            <Send className="h-4 w-4" /> {t("dd.sendPrescription")}
+          </button>
+          <button
+            onClick={sendWhatsApp}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#25D366] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#1da851]"
+          >
+            <MessageCircle className="h-4 w-4" /> {t("dd.whatsappPrescription")}
           </button>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
@@ -741,13 +793,13 @@ function ConsultationTools({ patient, onComplete }: { patient: PatientRecord; on
             onClick={() => toast("Consultation notes saved securely.")}
             className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-secondary"
           >
-            <Save className="h-4 w-4" /> Add Notes
+            <Save className="h-4 w-4" /> {t("dd.addNotes") || "Add Notes"}
           </button>
           <button
             onClick={onComplete}
             className="inline-flex items-center gap-1.5 rounded-xl bg-success px-4 py-2 text-sm font-medium text-background transition-all hover:opacity-90"
           >
-            <CheckCheck className="h-4 w-4" /> Complete
+            <CheckCheck className="h-4 w-4" /> {t("dd.markComplete")}
           </button>
         </div>
       </div>

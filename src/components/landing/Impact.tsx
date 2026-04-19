@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
-function Counter({
-  to,
-  suffix = "",
-  duration = 1600,
-}: {
-  to: number;
-  suffix?: string;
-  duration?: number;
-}) {
+function Counter({ to, suffix = "", duration = 1600 }: { to: number; suffix?: string; duration?: number }) {
   const [val, setVal] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const started = useRef(false);
@@ -40,30 +33,24 @@ function Counter({
 
   return (
     <span ref={ref} className="tabular-nums">
-      {val.toLocaleString()}
-      {suffix}
+      {val.toLocaleString()}{suffix}
     </span>
   );
 }
 
 export function Impact() {
+  const { t } = useI18n();
   return (
-    <section
-      id="impact"
-      className="border-t border-border/60 bg-gradient-to-b from-background to-secondary/40 py-20 sm:py-28"
-    >
+    <section id="impact" className="border-t border-border/60 bg-gradient-to-b from-background to-secondary/40 py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="reveal max-w-2xl">
-          <p className="font-display text-xs uppercase tracking-[0.18em] text-primary">Impact</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-            Measured in time given back.
-          </h2>
+          <p className="font-display text-xs uppercase tracking-[0.18em] text-primary">{t("impact.eyebrow")}</p>
+          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl">{t("impact.title")}</h2>
         </div>
-
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          <Stat label="Minutes saved per patient" value={7} suffix=" min" />
-          <Stat label="Hours saved per clinic, per week" value={28} suffix=" hrs" />
-          <Stat label="Documentation efficiency" value={62} suffix="%" />
+          <Stat label={t("impact.stat1")} value={7} suffix=" min" />
+          <Stat label={t("impact.stat2")} value={28} suffix=" hrs" />
+          <Stat label={t("impact.stat3")} value={62} suffix="%" />
         </div>
       </div>
     </section>

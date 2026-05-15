@@ -14,7 +14,7 @@ export const Route = createFileRoute("/contact")({
       { property: "og:title", content: "Contact NivaranAI" },
       {
         property: "og:description",
-        content: "Email yashharfode123@gmail.com or call +91 8819244133.",
+        content: "Email hello@nivaranai.com or call +91 99999 99999.",
       },
     ],
   }),
@@ -37,7 +37,7 @@ function ContactPage() {
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           <a
-            href="mailto:yashharfode123@gmail.com"
+            href="mailto:hello@nivaranai.com"
             className="group rounded-3xl border border-border bg-card p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground text-background">
@@ -45,13 +45,13 @@ function ContactPage() {
             </div>
             <p className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">Email</p>
             <p className="mt-1 font-display text-lg font-semibold text-foreground group-hover:text-primary">
-              yashharfode123@gmail.com
+              hello@nivaranai.com
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Best for detailed enquiries.</p>
           </a>
 
           <a
-            href="tel:+918819244133"
+            href="tel:+919999999999"
             className="group rounded-3xl border border-border bg-card p-6 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground text-background">
@@ -59,7 +59,7 @@ function ContactPage() {
             </div>
             <p className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">Phone</p>
             <p className="mt-1 font-display text-lg font-semibold text-foreground group-hover:text-primary">
-              +91 8819244133
+              +91 99999 99999
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Mon–Sat, 9 AM – 7 PM IST.</p>
           </a>

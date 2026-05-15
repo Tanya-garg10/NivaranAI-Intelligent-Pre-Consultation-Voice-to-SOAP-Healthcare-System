@@ -9,6 +9,7 @@ import { usePatients } from "@/hooks/usePatients";
 import { addDepartment, addDoctor, deleteDoctor, updateDoctor, type Facility } from "@/lib/hospitals";
 import { clearHospitalSession, getHospitalSession, registerDoctorEmail } from "@/lib/hospitalAuth";
 import { decryptVault } from "@/lib/triage";
+import { detectOutbreaks } from "@/lib/epidemic";
 
 export const Route = createFileRoute("/dashboard/hospital")({
   head: () => ({ meta: [{ title: "Hospital dashboard — NivaranAI" }] }),
@@ -114,30 +115,7 @@ function HospitalDashboard() {
 }
 
 function EpidemicRadar({ allPatients }: { allPatients: any[] }) {
-  // Group by location AND primary symptom category
-  const clusters = allPatients.reduce((acc, p) => {
-    let loc = p.location || "Bhopal";
-    const pincodeMatch = String(loc).match(/\b\d{6}\b/);
-    if (pincodeMatch) loc = pincodeMatch[0]; // strictly apply 6-digit pin code
-
-    const title = p.main_symptom?.toLowerCase() || "";
-    const symptom = title.includes("fever") ? "Fever" :
-      title.includes("cough") ? "Respiratory" : null;
-    if (symptom) {
-      const key = `${loc}|${symptom}`;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(p);
-    }
-    return acc;
-  }, {} as Record<string, any[]>);
-
-  // Find outbreaks (threshold 5+)
-  const outbreaks = Object.entries(clusters)
-    .filter(([_, patients]: [string, any]) => patients.length >= 5)
-    .map(([key, patients]: [string, any]) => {
-      const [loc, symptom] = key.split("|");
-      return { loc, symptom, count: patients.length, patients };
-    });
+  const outbreaks = detectOutbreaks(allPatients, 5);
 
   if (outbreaks.length === 0) return null;
 

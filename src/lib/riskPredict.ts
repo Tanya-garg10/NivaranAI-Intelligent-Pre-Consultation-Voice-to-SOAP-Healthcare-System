@@ -93,6 +93,14 @@ const RISK_RULES: Array<{
             reasoning: "Prolonged fever with weakness in endemic area — typhoid consideration",
             recommendation: "Widal test, blood culture, CBC. Empirical antibiotics if clinical suspicion high.",
         },
+        {
+            pattern: /mouth|oral|cancer|tumor|lump|growth|ulcer/i,
+            disease: "Oral Malignancy",
+            baseProbability: 20,
+            severity: "high",
+            reasoning: "Persistent oral lesion or growth requires exclusion of malignancy",
+            recommendation: "Urgent Biopsy, Histopathology, CT/MRI of Head and Neck. Oncology consult.",
+        },
     ];
 
 export function predictRisks(patient: PatientRecord): RiskPrediction[] {

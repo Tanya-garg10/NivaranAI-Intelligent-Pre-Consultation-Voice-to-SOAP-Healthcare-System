@@ -27,41 +27,139 @@ You MUST respond with valid JSON only. No markdown, no explanation. Use this exa
 
 const fallback = (transcript: string) => {
   const t = transcript.toLowerCase();
-  if (/chest|breath|saans|seene/.test(t)) {
+  
+  // Basic duration extraction
+  let duration = "Recent onset";
+  const durationMatch = t.match(/(\d+)\s*(day|week|month|hr|hour|din|hafta)/);
+  if (durationMatch) duration = `${durationMatch[1]} ${durationMatch[2]}(s)`;
+
+  if (/chest|breath|saans|seene|dil|heart/.test(t)) {
     return {
-      main_symptom: "Chest tightness with breathlessness",
-      duration: "A few hours",
-      severity: 9,
+      main_symptom: "Chest discomfort / Breathlessness",
+      duration,
+      severity: 8,
       soap: {
-        subjective: "Patient reports chest tightness and breathlessness onset earlier today. No prior cardiac history mentioned.",
-        objective: "Awaiting vitals. Observe for diaphoresis, pallor, distress.",
-        assessment: "Rule out acute coronary syndrome. Consider pulmonary embolism, panic attack as differentials.",
-        plan: "Urgent triage. ECG, SpO2, BP, troponin. Aspirin 300mg if no contraindication. Escalate to ER physician.",
+        subjective: `Patient reports: "${transcript}". Symptoms suggestive of cardiac or respiratory distress.`,
+        objective: "Awaiting vitals (BP, SpO2, Heart Rate).",
+        assessment: "Potential Acute Coronary Syndrome or Pulmonary distress.",
+        plan: "Immediate clinical triage. Oxygen support if SpO2 < 92%. ECG and Troponin/D-dimer as needed.",
       },
     };
   }
-  if (/fever|bukhar|temperature/.test(t)) {
+  if (/fever|bukhar|temperature|thanda|garm/.test(t)) {
     return {
-      main_symptom: "Fever with sore throat",
-      duration: "2 days",
+      main_symptom: "Febrile illness",
+      duration,
+      severity: 5,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Fever noted with associated discomfort.`,
+        objective: "Temperature check pending.",
+        assessment: "Viral fever or infection (URI/UTI/Malaria/Dengue per local prevalence).",
+        plan: "Paracetamol 650mg, hydration, sponging. Labs if fever persists > 48hrs.",
+      },
+    };
+  }
+  if (/cough|khansi|balgam|throat|gala/.test(t)) {
+    return {
+      main_symptom: "Respiratory / Throat discomfort",
+      duration,
       severity: 4,
       soap: {
-        subjective: "Patient reports fever ~100°F with sore throat for 2 days. Mild difficulty swallowing, no body ache.",
-        objective: "Awaiting examination. Check throat, lymph nodes, temperature.",
-        assessment: "Likely viral pharyngitis. Rule out streptococcal infection.",
-        plan: "Symptomatic care: paracetamol 500mg PRN, warm saline gargles, hydration. Review in 3 days if not improved.",
+        subjective: `Patient reports: "${transcript}". Irritation in throat or persistent cough.`,
+        objective: "Chest auscultation and throat inspection pending.",
+        assessment: "Upper Respiratory Infection (URI) or Pharyngitis.",
+        plan: "Steam inhalation, salt water gargles, cough suppressant. Review if breathlessness develops.",
       },
     };
   }
+  if (/stomach|pet|pain|dard|nausea|vomit|ultee/.test(t)) {
+    return {
+      main_symptom: "Abdominal discomfort",
+      duration,
+      severity: 4,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Pain or nausea in abdominal region.`,
+        objective: "Abdominal palpation pending.",
+        assessment: "Gastritis, Dyspepsia, or Mild Food Poisoning.",
+        plan: "Antacids, light diet, plenty of oral fluids. Review if pain localizes to RLQ.",
+      },
+    };
+  }
+  if (/cancer|tumor|growth|lump|gaanth/.test(t)) {
+    return {
+      main_symptom: "Unexplained growth/lump (Potential Oncology)",
+      duration,
+      severity: 7,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Concerns about a lump or potential growth.`,
+        objective: "Visual inspection and palpation required.",
+        assessment: "Suspicious lesion or growth. Rule out malignancy.",
+        plan: "Urgent biopsy or imaging (CT/MRI). Referral to Oncology or Specialist Surgeon.",
+      },
+    };
+  }
+  if (/mouth|oral|teeth|tooth|jeebh|muh/.test(t)) {
+    return {
+      main_symptom: "Oral/Dental discomfort",
+      duration,
+      severity: 4,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Discomfort in the oral cavity.`,
+        objective: "Intraoral examination pending.",
+        assessment: "Dental issue, Oral ulcer, or Stomatitis.",
+        plan: "Dental consultation. Warm saline rinses. Review if lesion doesn't heal in 14 days.",
+      },
+    };
+  }
+  if (/head|sir|dard|headache|migraine/.test(t)) {
+    return {
+      main_symptom: "Headache / Cephalgia",
+      duration,
+      severity: 4,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Pain in head region.`,
+        objective: "Neurological screening pending.",
+        assessment: "Tension headache or Migraine. Rule out secondary causes if severe.",
+        plan: "Rest in dark room, NSAIDs. Monitor for red flags (vomiting, vision loss).",
+      },
+    };
+  }
+  if (/skin|rash|itch|danne|daag/.test(t)) {
+    return {
+      main_symptom: "Skin / Dermatological issue",
+      duration,
+      severity: 3,
+      soap: {
+        subjective: `Patient reports: "${transcript}". Skin irritation or visible rash.`,
+        objective: "Dermatological inspection required.",
+        assessment: "Contact dermatitis or localized allergy.",
+        plan: "Avoid irritants, topical calamine or mild steroid. Antihistamines if itchy.",
+      },
+    };
+  }
+  if (/injury|chot|accident|fall|blood|khoon/.test(t)) {
+    return {
+      main_symptom: "Physical Injury / Trauma",
+      duration,
+      severity: 6,
+      soap: {
+        subjective: `Patient reports: "${transcript}". History of trauma or visible injury.`,
+        objective: "Wound inspection and stability check pending.",
+        assessment: "Soft tissue injury or potential fracture.",
+        plan: "Clean wound, dressing. X-ray if bony tenderness present. Tetanus prophylaxis.",
+      },
+    };
+  }
+  // Generic dynamic fallback
   return {
-    main_symptom: "Common cold symptoms",
-    duration: "3 days",
+    main_symptom: transcript.length > 40 ? transcript.slice(0, 37) + "..." : transcript,
+    duration,
     severity: 3,
     soap: {
-      subjective: "Patient reports nasal congestion, runny nose, and mild headache for 3 days.",
-      objective: "Awaiting examination.",
-      assessment: "Viral upper respiratory infection.",
-      plan: "Rest, fluids, paracetamol PRN, steam inhalation. Review if symptoms persist beyond 7 days.",
+      subjective: `Patient mentions: "${transcript}".`,
+      objective: "General physical examination pending.",
+      assessment: "Symptomatic presentation for evaluation.",
+      plan: "General consultation. Base further tests on clinical findings.",
     },
   };
 };
@@ -87,7 +185,7 @@ export const Route = createFileRoute("/api/analyze")({
           return Response.json({ error: "Empty transcript" }, { status: 400 });
         }
 
-        const apiKey = process.env.GROQ_API_KEY;
+        const apiKey = process.env.GROQ_API_KEY || (import.meta as any).env?.VITE_GROQ_API_KEY;
         if (!apiKey) {
           const fb = fallback(transcript);
           return Response.json({
@@ -176,6 +274,8 @@ export const Route = createFileRoute("/api/analyze")({
 function pickFallbackDept(text: string, available: string[]): string {
   const t = text.toLowerCase();
   const rules: Array<[RegExp, string]> = [
+    [/cancer|tumor|growth|lump|oncology/, "Oncology"],
+    [/mouth|oral|teeth|tooth|dental/, "Dental"],
     [/chest|breath|saans|seene|heart|cardiac/, "Cardiology"],
     [/headache|migraine|stroke|seizure|neuro/, "Neurology"],
     [/stomach|abdomen|pet|nausea|vomit|diarr/, "Gastroenterology"],

@@ -575,20 +575,31 @@ Do not provide a diagnosis. Do not output anything other than the question. Maxi
       } catch (e: any) {
         console.error("Groq API Error:", e.message || e);
 
-        // Fallback intelligent logic
-        let q = "Can you provide more details?";
+        // Highly dynamic fallback follow-up logic
+        let q = "Can you describe your symptoms in a bit more detail?";
         const lastUser = submittedText.toLowerCase();
 
-        if (lastUser.includes('fever')) q = "How high is the fever? Do you also have body pain or chills?";
-        else if (lastUser.includes('pain') || lastUser.includes('ache')) q = "How long has the pain been present, and can you describe it (sharp, dull, throbbing)?";
-        else if (lastUser.match(/cough|throat/)) q = "Is it a dry cough, or are you coughing up phlegm?";
-        else if (lastUser.match(/vomit|nausea|stomach/)) q = "Have you been able to keep any food or liquids down?";
-        else if (lastUser.match(/breathe|breath/)) q = "Are you experiencing shortness of breath or chest tightness?";
-        else if (userCount === 1) q = "Are there any other symptoms you are experiencing along with this?";
-        else if (userCount === 2) q = "Have you taken any medication for this so far?";
-        else if (userCount === 3) q = "Has anything made your condition better or worse?";
-        else if (userCount === 4) q = "Do you have any related medical history or chronic conditions?";
-        else if (userCount === 5) q = "Just one last question — on a scale of 1 to 10, how severe is your discomfort right now?";
+        if (lastUser.includes('fever') || lastUser.includes('bukhar')) {
+          q = "How high is the temperature, and are you also experiencing any shivering or body pain?";
+        } else if (lastUser.match(/cough|khansi|throat|gala/)) {
+          q = "Is the cough dry or productive (phlegm), and do you have any difficulty swallowing?";
+        } else if (lastUser.match(/pain|dard|ache/)) {
+          q = "Where exactly is the pain located, and does it spread to any other part of your body?";
+        } else if (lastUser.match(/vomit|nausea|stomach|pet/)) {
+          q = "Have you noticed any pattern with food, and are you able to keep down liquids?";
+        } else if (lastUser.match(/breathe|breath|saans/)) {
+          q = "Does the breathlessness happen while resting or only when you move around?";
+        } else if (lastUser.match(/injury|chot|fall|accident/)) {
+          q = "Is there any swelling or active bleeding in the injured area?";
+        } else if (lastUser.match(/skin|rash|itch/)) {
+          q = "Does the rash feel hot to touch, and have you used any new soaps or creams recently?";
+        } else if (lastUser.match(/head|sir/)) {
+          q = "Is the headache accompanied by any nausea or sensitivity to bright light?";
+        } else if (userCount === 1) {
+          q = "I see. Are there any other symptoms you've noticed along with this?";
+        } else if (userCount === 2) {
+          q = "Understood. Have you taken any medications or home remedies for this yet?";
+        }
 
         setMessages(prev => [...prev, { role: "ai", text: q }]);
       } finally {
